@@ -151,11 +151,24 @@ img { max-width: 100%; display: block; }
 :focus-visible { outline: none; box-shadow: var(--ring); }
 
 /* плавная смена языка/темы */
-::view-transition-old(root) { animation: wnOut .2s ease both; }
-::view-transition-new(root) { animation: wnIn .34s var(--ease) both; }
-@keyframes wnOut { to { opacity: 0; filter: blur(3px); } }
-@keyframes wnIn { from { opacity: 0; filter: blur(3px); transform: translateY(4px); } }
-.lang-swap { animation: wnIn .34s var(--ease) both; }
+/* смена языка: старый и новый снимок экрана растворяются друг в друга с одинаковой скоростью —
+   неизменные пиксели (фон, карточки, иконки) остаются на месте, «перетекают» только буквы */
+html.vt-lang::view-transition-old(root) { animation: vtLangOut .42s cubic-bezier(.4, 0, .2, 1) both; }
+html.vt-lang::view-transition-new(root) { animation: vtLangIn .42s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes vtLangOut { to { opacity: 0; } }
+@keyframes vtLangIn { from { opacity: 0; } }
+/* бегунок RU · ЎЗ · UZ — свой слой: во время перехода он переезжает, а не растворяется;
+   подписи кнопок — слои поверх него, их цвет плавно меняется */
+.lang-switch .pill { view-transition-name: wn-lang-pill; }
+.lang-switch [data-lang="ru"] { view-transition-name: wn-lang-ru; }
+.lang-switch [data-lang="uzc"] { view-transition-name: wn-lang-uzc; }
+.lang-switch [data-lang="uz"] { view-transition-name: wn-lang-uz; }
+html.vt-lang::view-transition-group(*) { animation-duration: .42s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+html.vt-lang::view-transition-old(wn-lang-pill), html.vt-lang::view-transition-new(wn-lang-pill) { animation: none; }
+html.vt-lang::view-transition-old(wn-lang-pill) { opacity: 0; }
+/* запасной вариант без View Transitions: текст мягко проявляется, без белой вспышки */
+.lang-swap { animation: langSwap .38s ease both; }
+@keyframes langSwap { from { opacity: .35; } }
 
 /* =========================================================================
    Каркас: сайдбар + основная область
@@ -228,6 +241,9 @@ img { max-width: 100%; display: block; }
 .nav-badge.soft { background: rgba(255,255,255,.1); color: var(--side-text); }
 
 .side-foot { padding: 12px; border-top: 1px solid var(--side-line); }
+.side-lang { margin-bottom: 10px; }
+.side-lang .lang-switch { width: 100%; height: 42px; }
+.side-lang .lang-switch button { flex: 1; }
 .me-card {
   display: flex; align-items: center; gap: 11px; padding: 10px; border-radius: 14px;
   background: rgba(255,255,255,.04); border: 1px solid var(--side-line); cursor: pointer; width: 100%; color: inherit; text-align: left;
@@ -248,20 +264,23 @@ img { max-width: 100%; display: block; }
 .avatar.xl { width: 96px; height: 96px; border-radius: 28px; font-size: 32px; }
 
 /* свёрнутый сайдбар — «рельс» */
-.shell.rail .side { width: var(--rail-w); }
-.shell.rail .side .logo-text, .shell.rail .side .nav-txt, .shell.rail .side .nav-badge,
-.shell.rail .side .me-card .who, .shell.rail .side .me-card > .ic { display: none; }
-.shell.rail .side .nav-label { height: 0; padding: 0; opacity: 0; pointer-events: none; }
-/* в «рельсе» полоса прокрутки не нужна — иначе она сдвигает иконки влево */
-.shell.rail .side-nav { scrollbar-width: none; padding: 6px 13px 16px; }
-.shell.rail .side-nav::-webkit-scrollbar { display: none; }
-.shell.rail .side .nav-group { margin-top: 10px; border-top: 1px solid var(--side-line); padding-top: 8px; }
-.shell.rail .side .nav-group:first-child { border-top: 0; padding-top: 0; }
-.shell.rail .side-head { padding: 18px 19px 14px; }
-.shell.rail .side-collapse { position: absolute; left: calc(var(--rail-w) - 14px); top: 24px; width: 28px; height: 28px; background: var(--side-2); transform: rotate(180deg); }
-.shell.rail .nav-item { justify-content: center; padding: 11px 0; gap: 0; }
-.shell.rail .nav-item.has-dot::after { content: ''; position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-magenta); box-shadow: 0 0 0 2px var(--side); }
-.shell.rail .me-card { justify-content: center; padding: 8px; }
+/* свёрнутый сайдбар («рельс») — только на широких экранах; планшет и телефон живут по своим правилам */
+@media (min-width: 1101px) {
+  .shell.rail .side { width: var(--rail-w); }
+  .shell.rail .side .logo-text, .shell.rail .side .nav-txt, .shell.rail .side .nav-badge,
+  .shell.rail .side .me-card .who, .shell.rail .side .me-card > .ic { display: none; }
+  .shell.rail .side .nav-label { height: 0; padding: 0; opacity: 0; pointer-events: none; }
+  /* в «рельсе» полоса прокрутки не нужна — иначе она сдвигает иконки влево */
+  .shell.rail .side-nav { scrollbar-width: none; padding: 6px 13px 16px; }
+  .shell.rail .side-nav::-webkit-scrollbar { display: none; }
+  .shell.rail .side .nav-group { margin-top: 10px; border-top: 1px solid var(--side-line); padding-top: 8px; }
+  .shell.rail .side .nav-group:first-child { border-top: 0; padding-top: 0; }
+  .shell.rail .side-head { padding: 18px 19px 14px; }
+  .shell.rail .side-collapse { position: absolute; left: calc(var(--rail-w) - 14px); top: 24px; width: 28px; height: 28px; background: var(--side-2); transform: rotate(180deg); }
+  .shell.rail .nav-item { justify-content: center; padding: 11px 0; gap: 0; }
+  .shell.rail .nav-item.has-dot::after { content: ''; position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-magenta); box-shadow: 0 0 0 2px var(--side); }
+  .shell.rail .me-card { justify-content: center; padding: 8px; }
+}
 .side .logo-text, .side .nav-txt, .side .nav-badge, .side .me-card .who, .side .nav-label { transition: opacity .2s; }
 /* всплывающая подсказка у иконки в режиме «рельса» */
 .rail-tip {
@@ -273,7 +292,7 @@ img { max-width: 100%; display: block; }
 
 .main { margin-left: var(--side-w); min-width: 0; transition: margin-left .28s var(--ease); overflow-x: clip; }
 .dd-list, .pick-list, .cmdk-list, .pop-list { overscroll-behavior: contain; }
-.shell.rail .main { margin-left: var(--rail-w); }
+@media (min-width: 1101px) { .shell.rail .main { margin-left: var(--rail-w); } }
 
 /* ---------- верхняя панель ---------- */
 .top {

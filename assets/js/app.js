@@ -69,7 +69,7 @@
     return `<div class="side-head"><div class="logo-mark">${W.LOGO_W}</div><div class="logo-text"><b>WINNER</b><span>SAVER PAINTS · ${t('учёт производства')}</span></div>
         <button class="side-collapse" data-sh="rail" title="${t('Свернуть меню')}">${I('chevL', 'ic-sm')}</button></div>
       <nav class="side-nav">${groups}</nav>
-      <div class="side-foot"><button class="me-card" data-nav="profile" data-tip="${esc(me.name)}"><div class="avatar" style="--av:${W.avatarBg(me.name)}">${W.initials(me.name)}</div>
+      <div class="side-foot"><div class="side-lang mob-only">${W.langSwitch('dark')}</div><button class="me-card" data-nav="profile" data-tip="${esc(me.name)}"><div class="avatar" style="--av:${W.avatarBg(me.name)}">${W.initials(me.name)}</div>
         <div class="who"><b>${esc(W.shortName(me.name))}</b><span>${esc(me.roles.map(W.roleName).join(', '))}</span></div>${I('chevR', 'ic-sm')}</button></div>`;
   };
   const topHTML = () => {
@@ -160,7 +160,7 @@
     if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
     // мягкое затухание старой темы в новую (без «луча»)
     document.documentElement.classList.add('vt-theme');
-    document.startViewTransition(apply).finished.finally(() => document.documentElement.classList.remove('vt-theme'));
+    W.vt(apply).finally(() => document.documentElement.classList.remove('vt-theme'));
   };
 
   /* ---------- быстрый поиск ---------- */
@@ -243,7 +243,7 @@
   const showTip = e => {
     const it = e.target.closest('.nav-item, .me-card');
     const shell = $('#shell');
-    const railMode = shell.classList.contains('rail') || (innerWidth > 720 && innerWidth <= 1100 && !shell.classList.contains('rail-open'));
+    const railMode = (shell.classList.contains('rail') && innerWidth > 1100) || (innerWidth > 720 && innerWidth <= 1100 && !shell.classList.contains('rail-open'));
     if (tipEl) { tipEl.remove(); tipEl = null; }
     if (!it || !railMode) return;
     const r = it.getBoundingClientRect();

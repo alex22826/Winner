@@ -80,7 +80,20 @@
     return s;
   };
 
-  /* смена языка — с плавным перерисовыванием (View Transitions, если есть) */
+  /* смена языка.
+     Где есть View Transitions: снимок старого экрана плавно растворяется в новый на месте —
+     меняются только буквы, фон и карточки неподвижны; бегунок переключателя — отдельный слой,
+     он плавно переезжает к новому языку. Без View Transitions — бегунок едет, текст мягко проявляется. */
+  const VT = () => document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // переход со страховкой: если браузер не отрисовал кадр за 350 мс (свёрнутое окно), изменение применяется сразу
+  W.vt = (update) => {
+    let done = false;
+    const run = () => { if (!done) { done = true; update(); } };
+    const tr = document.startViewTransition(run);
+    tr.ready.catch(() => {}); tr.updateCallbackDone.catch(() => {}); // пропущенный переход — не ошибка
+    const guard = setTimeout(() => { if (!done) { try { tr.skipTransition(); } catch (e) { /* уже завершён */ } run(); } }, 350);
+    return tr.finished.catch(() => {}).finally(() => clearTimeout(guard));
+  };
   W.setLang = (l) => {
     if (l === W.lang) return;
     const apply = () => {
@@ -88,19 +101,34 @@
       try { localStorage.setItem(LKEY, l); } catch (e) { /* приватный режим */ }
       document.documentElement.lang = l === 'ru' ? 'ru' : 'uz';
       W.emit && W.emit('lang', l);
+      document.querySelectorAll('.lang-switch').forEach(sw => {
+        sw.querySelectorAll('[data-lang]').forEach(b => b.classList.toggle('on', b.dataset.lang === l));
+        placePill(sw, true);
+      });
     };
-    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(apply);
-    else { apply(); const v = document.querySelector('.main, .login'); if (v) { v.classList.remove('lang-swap'); void v.offsetWidth; v.classList.add('lang-swap'); } }
+    if (VT()) {
+      const html = document.documentElement;
+      html.classList.add('vt-lang');
+      W.vt(apply).finally(() => html.classList.remove('vt-lang'));
+    } else {
+      apply();
+      document.querySelectorAll('.main, .art-in, .auth-box').forEach(v => { v.classList.remove('lang-swap'); void v.offsetWidth; v.classList.add('lang-swap'); });
+    }
   };
 
   /* переключатель RU · ЎЗ · UZ с «бегунком» */
   W.langSwitch = (cls = '') => `<div class="lang-switch ${cls}" role="group" aria-label="Language">
     <span class="pill"></span>${W.LANGS.map(l => `<button type="button" data-lang="${l.id}" class="${l.id === W.lang ? 'on' : ''}" title="${l.name}">${l.label}</button>`).join('')}</div>`;
-  const placePill = sw => {
+  // instant — поставить без анимации (новый переключатель после перерисовки не должен «ехать» из начала)
+  const placePill = (sw, instant) => {
     const on = sw.querySelector('button.on'), pill = sw.querySelector('.pill');
     if (!on || !pill || !on.offsetWidth) return;
+    const still = instant || !pill._placed;
+    if (still) pill.style.transition = 'none';
     pill.style.width = on.offsetWidth + 'px';
     pill.style.transform = `translateX(${on.offsetLeft - 3}px)`;
+    if (still) { void pill.offsetWidth; pill.style.transition = ''; }
+    pill._placed = true;
   };
   // пересчёт при любом изменении размера (скрытая вкладка, поворот экрана, загрузка шрифта)
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => es.forEach(e => placePill(e.target))) : null;
@@ -110,11 +138,12 @@
   });
   document.addEventListener('click', e => {
     const b = e.target.closest('.lang-switch [data-lang]');
-    if (!b) return;
+    if (!b || b.dataset.lang === W.lang) return;
+    if (VT()) return W.setLang(b.dataset.lang); // бегунок переедет внутри перехода
     const sw = b.closest('.lang-switch');
     sw.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    W.placeLangPill(sw.parentNode);
-    setTimeout(() => W.setLang(b.dataset.lang), 140);
+    placePill(sw);
+    setTimeout(() => W.setLang(b.dataset.lang), 180);
   });
 
   /* названия месяцев */

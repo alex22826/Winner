@@ -8,8 +8,8 @@
   const root = document.getElementById('root');
   const dark = () => document.documentElement.dataset.theme === 'dark';
   const tools = () => `${W.langSwitch()}<button class="icon-btn" data-theme-btn title="${dark() ? t('Светлая тема') : t('Тёмная тема')}">${I(dark() ? 'sun' : 'moon')}</button>`;
-  const html = () => `<div class="login">
-    <section class="art" aria-hidden="false"><canvas></canvas><div class="art-in">
+  // тексты левой части и форма рисуются отдельно от фона: при смене языка фон (WebGL) не пересоздаётся
+  const artIn = () => `
       <div class="art-brand"><div class="logo-mark">${W.LOGO_W}</div><div><b>WINNER</b><span>SAVER PAINTS · ${t('учёт производства')}</span></div><div class="art-tools">${tools()}</div></div>
       <div class="art-copy"><span class="kicker"><i></i>${t('Краски · лаки · типографская краска · мастики')}</span>
         <h1>${t('Учёт сырья и')} <em>${t('готовой продукции')}</em></h1>
@@ -19,8 +19,8 @@
           <div class="art-feat">${I('truck')}<b>${t('Отгрузки')}</b><span>${t('стадии каждого заказа')}</span></div>
           <div class="art-feat">${I('shieldCheck')}<b>${t('Банк')}</b><span>${t('подтверждение бухгалтером')}</span></div>
         </div></div>
-      <div class="art-foot"><span>© ${new Date().getFullYear()} WINNER</span><span>${t('Ташкент, Узбекистан')}</span></div></div></section>
-    <section class="auth"><div class="auth-top">${tools()}</div>
+      <div class="art-foot"><span>© ${new Date().getFullYear()} WINNER</span><span>${t('Ташкент, Узбекистан')}</span></div>`;
+  const auth = () => `<div class="auth-top">${tools()}</div>
       <div class="auth-box">
         <form class="auth-form" novalidate>
           <div class="h-eyebrow"><i></i>${t('Личный кабинет')}</div>
@@ -34,17 +34,21 @@
         </form>
         <div class="auth-ok"><div class="ring">${I('check')}</div><h2 style="font-size:24px">${t('Добро пожаловать!')}</h2><p class="muted mt-8 ok-name"></p></div>
       </div>
-      <div class="auth-foot">${t('Данные защищены паролем · версия {v}', { v: W.APP_VERSION })}</div></section></div>`;
+      <div class="auth-foot">${t('Данные защищены паролем · версия {v}', { v: W.APP_VERSION })}</div>`;
   const state = { login: '', pass: '' };
 
   const draw = () => {
     const f = root.querySelector('.auth-form');
     if (f) { state.login = f.login.value; state.pass = f.pass.value; }
-    stopGL();
-    root.innerHTML = html();
+    if (!root.querySelector('.login')) {
+      root.innerHTML = `<div class="login"><section class="art"><canvas></canvas><div class="art-in">${artIn()}</div></section><section class="auth">${auth()}</section></div>`;
+      startGL(root.querySelector('.art canvas'));
+    } else {
+      root.querySelector('.art-in').innerHTML = artIn();
+      root.querySelector('.auth').innerHTML = auth();
+    }
     W.placeLangPill(root);
     bind();
-    startGL(root.querySelector('.art canvas'));
   };
   const showErr = (msg) => { const e = root.querySelector('.auth-err'); e.querySelector('span').textContent = msg; e.classList.remove('on'); void e.offsetWidth; e.classList.add('on'); };
   const bind = () => {
