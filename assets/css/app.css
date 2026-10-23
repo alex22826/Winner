@@ -29,6 +29,8 @@
 
   /* фирменная «краска»: голубой → пурпур → жёлтый → оранжевый */
   --c-cyan: #00b8f5; --c-magenta: #ff2d87; --c-yellow: #ffc21a; --c-orange: #ff6a2b;
+  /* счётчики уведомлений: белая цифра на этом фоне — контраст 5,2:1 (на ярко-розовом было 3,5:1) */
+  --badge: #d4145f;
   --paint: linear-gradient(120deg, var(--c-cyan) 0%, #6a5cff 34%, var(--c-magenta) 64%, var(--c-orange) 86%, var(--c-yellow) 100%);
 
   --brand: #3346ff;
@@ -235,10 +237,11 @@ html.vt-lang::view-transition-old(wn-lang-pill) { opacity: 0; }
 }
 .nav-item .nav-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .nav-badge {
-  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; display: inline-grid; place-items: center;
-  font-size: 11px; font-weight: 700; background: var(--c-magenta); color: #fff;
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 99px; display: inline-grid; place-items: center;
+  font-size: 12px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+  background: var(--badge); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
 }
-.nav-badge.soft { background: rgba(255,255,255,.1); color: var(--side-text); }
+.nav-badge.soft { background: rgba(255,255,255,.12); color: #e4e7f2; box-shadow: none; }
 
 .side-foot { padding: 12px; border-top: 1px solid var(--side-line); }
 .side-lang { margin-bottom: 10px; }
@@ -317,7 +320,7 @@ html.vt-lang::view-transition-old(wn-lang-pill) { opacity: 0; }
 .icon-btn:hover { color: var(--text); border-color: var(--line-2); }
 .icon-btn:active { transform: scale(.96); }
 /* счётчик на кнопке — маленький, в углу, не закрывает колокольчик */
-.icon-btn .dot { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--c-magenta); color: #fff; font-size: 10px; font-weight: 700; line-height: 1; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); pointer-events: none; }
+.icon-btn .dot { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; background: var(--badge); color: #fff; font-size: 10.5px; font-weight: 800; line-height: 1; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); pointer-events: none; }
 .icon-btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
 
 /* переключатель языка: RU · ЎЗ · UZ с «бегунком» */
@@ -527,7 +530,7 @@ select.inp.sm { padding-right: 30px; background-position: right 9px center; }
 .tab.on { color: var(--text); }
 .tab .cnt { font-size: 11px; font-weight: 700; padding: 0 7px; line-height: 19px; border-radius: 99px; background: var(--surface-3); color: var(--text-2); }
 .tab.on .cnt { background: var(--brand); color: #fff; }
-.tab .cnt.hot { background: var(--c-magenta); color: #fff; }
+.tab .cnt.hot { background: var(--badge); color: #fff; font-weight: 800; }
 .tabs .ink { position: absolute; bottom: -1px; left: 0; height: 3px; border-radius: 3px 3px 0 0; background: linear-gradient(90deg, var(--brand), var(--c-magenta)); transition: transform .35s var(--ease), width .35s var(--ease); }
 
 /* панель фильтров */
