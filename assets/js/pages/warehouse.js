@@ -140,7 +140,7 @@
     },
     actions: {
       tab: el => { st().page = 1; W.setParams({ tab: el.dataset.v }); },
-      kind: el => { const S = st(); S.kind = el.dataset.v; S.wh = ''; S.page = 1; W.refresh(); },
+      kind: el => { const S = st(); S.kind = el.dataset.v; S.wh = ''; S.page = 1; W.swap(); },
       wh: el => { st().wh = el.value; W.region('tab', TABS[W.cur.params.tab || 'stock']()); },
       period: el => { st().period = el.value; W.region('tab', TABS[W.cur.params.tab || 'stock']()); },
       mkind: el => { st().mkind = el.value; W.region('tab', tabMoves()); },

@@ -92,16 +92,9 @@
 
   W.page('customers', {
     render() {
-      const S = st(), all = W.db.customers, mon = W.month();
-      const withDebt = all.filter(c => stats(c).debt > 0);
+      const S = st();
       return `<div class="page-head"><div><h1>${t('Контрагенты')}</h1><div class="sub">${t('База клиентов: постоянные покупатели, организации и частные лица')}</div></div>
         <div class="actions">${W.allow('customers.edit') ? `<button class="btn primary" data-a="add">${I('plus')}${t('Добавить контрагента')}</button>` : ''}</div></div>
-        <div class="kpis">
-          ${W.kpi({ label: t('Всего контрагентов'), value: all.length, icon: 'briefcase' })}
-          ${W.kpi({ label: t('Постоянных клиентов'), value: all.filter(c => c.regular).length, icon: 'flag', c: 'c-vio' })}
-          ${W.kpi({ label: t('С долгом'), value: withDebt.length, icon: 'alert', c: 'c-bad', foot: W.money(W.sum(withDebt, c => stats(c).debt)) })}
-          ${W.kpi({ label: t('Новых за месяц'), value: all.filter(c => (c.created || '').slice(0, 7) === mon).length, icon: 'userPlus', c: 'c-ok' })}
-        </div>
         <div class="toolbar">${W.searchBox(S.q, 'q', t('Название, ИНН, телефон или контакт'))}
           <div class="filters">${W.seg([{ id: 'all', label: t('Все') }, { id: 'regular', label: t('Постоянные') }, { id: 'debt', label: t('С долгом') }], S.seg, 'seg')}
           <select class="inp" data-on="type">${W.opts([['', t('Все типы')], ...typeOpts()], S.type)}</select></div></div>
@@ -110,7 +103,7 @@
     actions: {
       q: el => { st().q = el.value; W.region('list', list()); },
       type: el => { st().type = el.value; W.region('list', list()); },
-      seg: el => { st().seg = el.dataset.v; W.refresh(); },
+      seg: el => { st().seg = el.dataset.v; W.swap(); },
       add: () => W.customerForm(),
       open: (el, e) => { if (e.target.closest('.act')) return; W.openCustomer(el.dataset.id); },
       edit: el => W.customerForm(W.customer(el.dataset.id)),

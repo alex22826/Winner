@@ -24,7 +24,7 @@
   const M1 = { a: 'а', b: 'б', c: 'ц', d: 'д', f: 'ф', g: 'г', h: 'ҳ', i: 'и', j: 'ж', k: 'к', l: 'л', m: 'м', n: 'н', o: 'о', p: 'п', q: 'қ', r: 'р', s: 'с', t: 'т', u: 'у', v: 'в', w: 'в', x: 'х', y: 'й', z: 'з' };
   const M2 = { sh: 'ш', ch: 'ч', "o'": 'ў', "g'": 'ғ', yo: 'ё', yu: 'ю', ya: 'я', ye: 'е' };
   const APOS = /['ʻʼ‘’`]/;
-  const KEEP = /(\{\w+\}|https?:\/\/\S+|\b(?:Excel|CSV|PDF|Didox|USD|UZS|JSON|XLSX|WINNER|EAST COLOR|Ctrl|Enter|Esc|RU|UZ|ЎЗ|e-mail|E-mail|ID|SMS)\b)/;
+  const KEEP = /(\{\w+\}|https?:\/\/\S+|\b(?:Excel|CSV|PDF|Didox|USD|UZS|JSON|XLSX|WINNER|SAVER PAINTS|MCHJ|Ctrl|Enter|Esc|RU|UZ|ЎЗ|e-mail|E-mail|ID|SMS)\b)/;
   const translitPart = str => {
     let out = '';
     for (let i = 0; i < str.length;) {

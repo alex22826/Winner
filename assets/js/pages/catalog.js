@@ -127,8 +127,8 @@
     },
     actions: {
       q: el => { st().q = el.value; W.region('grid', grid()); },
-      cat: el => { st().cat = el.dataset.v; W.refresh(); },
-      avail: el => { st().avail = el.dataset.v; W.refresh(); },
+      cat: el => { st().cat = el.dataset.v; W.swap(); },
+      avail: el => { st().avail = el.dataset.v; W.swap(); },
       add: () => productForm(),
       edit: (el, e) => { e.stopPropagation(); productForm(W.product(el.dataset.id)); },
       open: (el, e) => { if (e.target.closest('[data-a=edit]')) return; const p = W.product(el.dataset.id); W.allow('catalog.edit') ? productForm(p) : viewProduct(p); },

@@ -10,7 +10,7 @@
   const tools = () => `${W.langSwitch()}<button class="icon-btn" data-theme-btn title="${dark() ? t('Светлая тема') : t('Тёмная тема')}">${I(dark() ? 'sun' : 'moon')}</button>`;
   const html = () => `<div class="login">
     <section class="art" aria-hidden="false"><canvas></canvas><div class="art-in">
-      <div class="art-brand"><div class="logo-mark">${W.LOGO_W}</div><div><b>WINNER</b><span>EAST COLOR · ${t('учёт производства')}</span></div><div class="art-tools">${tools()}</div></div>
+      <div class="art-brand"><div class="logo-mark">${W.LOGO_W}</div><div><b>WINNER</b><span>SAVER PAINTS · ${t('учёт производства')}</span></div><div class="art-tools">${tools()}</div></div>
       <div class="art-copy"><span class="kicker"><i></i>${t('Краски · лаки · типографская краска · мастики')}</span>
         <h1>${t('Учёт сырья и')} <em>${t('готовой продукции')}</em></h1>
         <p>${t('Склад, производство, продажи, касса, банк и зарплата — в одном кабинете с телефона, планшета и ноутбука.')}</p>

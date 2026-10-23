@@ -303,7 +303,7 @@
       <tbody>${rows.map(r => `<tr><td>${r.n}</td><td>${esc(r.p.name)}</td><td class="r">${W.qty(r.qty)}</td><td class="r">${W.money(r.price)}</td><td class="r">${W.money(r.sum)}</td></tr>`).join('')}</tbody></table>
       ${s.discount ? `<div class="total" style="font-weight:500;font-size:13px">${t('Скидка')}: −${W.money(s.discount)}</div>` : ''}
       <div class="total">${t('Итого к оплате')}: ${W.money(total)}</div>
-      <div class="signs"><div>${t('Отпустил')}: ____________</div><div>${t('Получил')}: ____________</div></div>
+      <div class="signs"><div>${t('Производитель')}: ____________</div><div>${t('Заказчик')}: ____________</div></div>
       <div style="margin-top:18px;font-size:11px;color:#777">${t('Продажа №{n}', { n: W.no(s.no) })} · ${t(W.CHANNELS[s.channel])}</div></div>`;
     const vat = 12;
     return `<div class="doc">${W.docHead(t('Счёт-фактура №{n}', { n: W.no(no) }), t('от {d} · к договору поставки', { d: date }))}

@@ -154,7 +154,7 @@
     },
     actions: {
       in: () => cashForm(1), out: () => cashForm(-1), tr: () => transferForm(),
-      acc: el => { cst().acc = el.dataset.v; cst().page = 1; W.refresh(); },
+      acc: el => { cst().acc = el.dataset.v; cst().page = 1; W.swap(); },
       period: el => { cst().period = el.value; cst().page = 1; W.region('list', cashList()); },
       q: el => { cst().q = el.value; W.region('list', cashList()); },
       more: () => { cst().page++; W.region('list', cashList()); },
@@ -268,7 +268,15 @@
         W.editBankOp(b, { at: v('at') || b.at, dir: +v('dir'), desc: v('desc').trim(), party: v('party').trim(), num: v('num').trim(), amount });
         bst().editing = null; W.save(); W.toast(t('Изменения записаны в историю'));
       },
-      confirm: el => { const b = W.db.bank.find(x => x.id === el.dataset.id); W.confirmBank(b); bst().sel = bst().sel.filter(i => i !== b.id); W.save(); W.toast(t('Операция подтверждена')); },
+      confirm: async el => {
+        const b = W.db.bank.find(x => x.id === el.dataset.id);
+        const ok = await W.confirm({
+          title: t('Подтвердить операцию?'), danger: false, icon: 'shieldCheck', ok: t('Подтвердить'),
+          text: `<b>${b.dir > 0 ? t('Поступление') : t('Списание')} ${b.dir > 0 ? '+' : '−'}${W.money(b.amount)}</b><br>${esc(W.tx(b.desc))}${b.party ? ' · ' + esc(W.tx(b.party)) : ''}<br><span class="muted">${t('Проверьте, что операция есть в Didox и Дибанк. После подтверждения статус сменится на «Подтверждено».')}</span>`,
+        });
+        if (!ok) return;
+        W.confirmBank(b); bst().sel = bst().sel.filter(i => i !== b.id); W.save(); W.toast(t('Операция подтверждена'));
+      },
       sel: el => { const S = bst(); S.sel = el.checked ? [...S.sel, el.dataset.id] : S.sel.filter(i => i !== el.dataset.id); W.refresh(); },
       selAll: el => { bst().sel = el.checked ? bankRows(W.cur.params.tab || 'all').filter(b => b.status === 'pending').map(b => b.id) : []; W.refresh(); },
       selNone: () => { bst().sel = []; W.refresh(); },

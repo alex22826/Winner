@@ -66,7 +66,7 @@
         return `<button class="nav-item ${id === cur ? 'active' : ''} ${b ? 'has-dot' : ''}" data-nav="${id}" data-tip="${esc(t(label))}">${I(ic)}<span class="nav-txt">${t(label)}</span>${b ? `<span class="nav-badge ${b.soft ? 'soft' : ''}">${b.n > 99 ? '99+' : b.n}</span>` : ''}</button>`;
       }).join('')}</div>`;
     }).join('');
-    return `<div class="side-head"><div class="logo-mark">${W.LOGO_W}</div><div class="logo-text"><b>WINNER</b><span>EAST COLOR · ${t('учёт производства')}</span></div>
+    return `<div class="side-head"><div class="logo-mark">${W.LOGO_W}</div><div class="logo-text"><b>WINNER</b><span>SAVER PAINTS · ${t('учёт производства')}</span></div>
         <button class="side-collapse" data-sh="rail" title="${t('Свернуть меню')}">${I('chevL', 'ic-sm')}</button></div>
       <nav class="side-nav">${groups}</nav>
       <div class="side-foot"><button class="me-card" data-nav="profile" data-tip="${esc(me.name)}"><div class="avatar" style="--av:${W.avatarBg(me.name)}">${W.initials(me.name)}</div>
@@ -77,7 +77,6 @@
     const dark = document.documentElement.dataset.theme === 'dark';
     return `<button class="icon-btn burger" data-sh="menu" aria-label="${t('Меню')}">${I('menu')}</button>
       <div class="crumbs">${info.group ? `<span class="crumb-g">${t(info.group)}</span><span class="crumb-sep">${I('chevR')}</span>` : ''}<b>${t(info.label || '')}</b></div>
-      <button class="top-search" data-sh="cmdk">${I('search', 'ic-sm')}<span>${t('Поиск по товарам, клиентам, заказам…')}</span><span class="kbd">Ctrl K</span></button>
       <div class="top-actions">
         ${W.langSwitch()}
         <button class="icon-btn theme-btn" data-sh="theme" title="${dark ? t('Светлая тема') : t('Тёмная тема')}">${I(dark ? 'sun' : 'moon')}</button>
@@ -132,14 +131,23 @@
     catch (e) { console.error(e); view.innerHTML = W.empty(t('Не удалось открыть раздел'), esc(e.message), 'alert'); }
     if (!o.keep || changed) { view.classList.remove('page-in'); void view.offsetWidth; view.classList.add('page-in'); scrollTo(0, 0); }
     else scrollTo(0, y);
-    if (o.soft) { const tb = view.querySelector('[data-region="tab"]'); if (tb) { tb.classList.remove('page-in'); void tb.offsetWidth; tb.classList.add('page-in'); } }
+    // смена вкладки — содержимое въезжает с той стороны, куда переключились; смена режима — лёгкий подъём
+    const tabIdx = [...view.querySelectorAll('.tabs .tab')].findIndex(x => x.classList.contains('on'));
+    if (o.soft) {
+      const reg = view.querySelector('[data-region="tab"]') || view.querySelector('[data-region]');
+      const prev = lastTab && lastTab.page === page ? lastTab.i : tabIdx;
+      if (reg) reg.classList.add(tabIdx > prev ? 'tab-in-r' : tabIdx < prev ? 'tab-in-l' : 'tab-in');
+    }
+    lastTab = { page, i: tabIdx };
     W.enhance(view);
     pg.mount && pg.mount(view, params);
     if (focusOn && !changed) { const i = view.querySelector(`[data-on="${focusOn.on}"]`); if (i && i.tagName === 'INPUT') { i.focus({ preventScroll: true }); try { i.setSelectionRange(focusOn.s, focusOn.s); } catch (e) { /* date */ } } }
     W.renderShell();
     document.title = `${t((navInfo(page) || {}).label || '')} · WINNER`;
   };
+  let lastTab = null;
   W.refresh = () => W.render({ keep: true });
+  W.swap = () => W.render({ keep: true, soft: true }); // перерисовать с анимацией (сегменты, режимы)
   W.region = (name, html) => { const el = document.querySelector(`[data-region="${name}"]`); if (el) { el.innerHTML = html; W.enhance(el); } };
 
   /* ---------- тема ---------- */
@@ -150,12 +158,9 @@
       W.renderShell();
     };
     if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
-    const x = ev ? ev.clientX : innerWidth - 80, y = ev ? ev.clientY : 30;
-    const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    // мягкое затухание старой темы в новую (без «луча»)
     document.documentElement.classList.add('vt-theme');
-    const tr = document.startViewTransition(apply);
-    tr.ready.then(() => document.documentElement.animate({ clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] }, { duration: 560, easing: 'cubic-bezier(.2,.8,.2,1)', pseudoElement: '::view-transition-new(root)' }));
-    tr.finished.finally(() => document.documentElement.classList.remove('vt-theme'));
+    document.startViewTransition(apply).finished.finally(() => document.documentElement.classList.remove('vt-theme'));
   };
 
   /* ---------- быстрый поиск ---------- */

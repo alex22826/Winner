@@ -89,7 +89,7 @@
       return `<div class="page-head"><div><h1>${t('Отчёты')}</h1><div class="sub">${t('Смотрите на экране, печатайте или скачивайте в Excel')}</div></div></div>
         <div class="split">
           <div class="card"><div class="pick-list" style="max-height:none">${list.map(r => `<button class="pick ${r.id === rep.id ? 'on' : ''}" data-a="rep" data-v="${r.id}"><div class="kpi-ic" style="width:36px;height:36px">${I(r.icon, 'ic-sm')}</div><div style="min-width:0"><b>${t(r.title)}</b><span>${t(r.desc)}</span></div></button>`).join('')}</div></div>
-          <div class="card"><div class="card-head"><div><h3>${t(rep.title)}</h3><div class="sub">${periodLabel(rep)}</div></div>
+          <div class="card" data-region="rep"><div class="card-head"><div><h3>${t(rep.title)}</h3><div class="sub">${periodLabel(rep)}</div></div>
             <div class="right">${rep.noPeriod ? '' : `<select class="inp sm" data-on="period" style="width:auto">${W.opts([...W.periodOpts(), ['custom', t('Свои даты')]], S.period)}</select>`}
               <button class="btn sm" data-a="print">${I('print')}${t('Печать')}</button><button class="btn sm primary" data-a="csv">${I('download')}${t('Excel')}</button></div></div>
             ${!rep.noPeriod && S.period === 'custom' ? `<div class="row" style="padding:12px 20px 0"><input class="inp sm" type="date" data-change="from" value="${S.from}" style="width:auto" aria-label="${t('С даты')}"><span class="muted">—</span><input class="inp sm" type="date" data-change="to" value="${S.to}" style="width:auto" aria-label="${t('По дату')}"></div>` : ''}
@@ -97,7 +97,7 @@
         </div>`;
     },
     actions: {
-      rep: el => { st().rep = el.dataset.v; W.refresh(); },
+      rep: el => { st().rep = el.dataset.v; W.swap(); },
       period: el => { st().period = el.value; W.refresh(); },
       from: el => { st().from = el.value; W.refresh(); },
       to: el => { st().to = el.value; W.refresh(); },

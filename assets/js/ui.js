@@ -102,6 +102,16 @@
 
   /* ---------- модалки и шторки ---------- */
   const stack = [];
+  // может ли что-то внутри окна прокрутиться в эту сторону (тогда колесо пропускаем)
+  const canScroll = (node, stop, dy) => {
+    for (let el = node; el && el !== stop; el = el.parentElement) {
+      if (el.scrollHeight <= el.clientHeight + 1) continue;
+      const oy = getComputedStyle(el).overflowY;
+      if (oy !== 'auto' && oy !== 'scroll') continue;
+      if (dy < 0 ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+    }
+    return false;
+  };
   W.modal = (o) => {
     const ov = document.createElement('div');
     ov.className = 'overlay' + (o.drawer ? ' drawer-wrap' : '');
@@ -117,13 +127,17 @@
       ${o.foot ? `<div class="modal-foot">${o.foot}</div>` : ''}
     </div>`;
     document.body.appendChild(ov);
-    document.body.style.overflow = 'hidden';
+    // страницу под окном не прячем (иначе пропадает полоса прокрутки и всё дёргается) —
+    // просто не даём колесу/пальцу прокручивать её, пока открыто окно
+    ov.addEventListener('wheel', e => { if (!canScroll(e.target, ov, e.deltaY)) e.preventDefault(); }, { passive: false });
+    ov.addEventListener('touchmove', e => { if (!e.target.closest('.modal-body, .cmdk-list')) e.preventDefault(); }, { passive: false });
     const el = ov.firstElementChild;
     let closed = false;
     const close = (val) => {
       if (closed) return; closed = true;
       ov.classList.add('closing');
-      setTimeout(() => { ov.remove(); if (!document.querySelector('.overlay')) document.body.style.overflow = ''; }, 190);
+      W.closeCal && W.closeCal();
+      setTimeout(() => ov.remove(), 190);
       stack.splice(stack.indexOf(api), 1);
       o.onClose && o.onClose(val);
     };
@@ -147,7 +161,7 @@
   };
   W.drawer = o => W.modal(Object.assign({ drawer: true }, o));
   W.closeTop = () => { const m = stack[stack.length - 1]; if (m) { m.close(); return true; } return false; };
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.querySelector('.dd-menu')) W.closeTop(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.querySelector('.dd-menu, .cal')) W.closeTop(); });
 
   W.confirm = ({ title, text, ok, danger = true, icon }) => new Promise(res => {
     W.modal({
@@ -235,6 +249,76 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ddEl) { closeDD(); e.stopPropagation(); } }, true);
   addEventListener('scroll', e => { if (ddEl && !ddEl.contains(e.target) && Date.now() - ddEl._t > 250) closeDD(); }, true);
   addEventListener('resize', closeDD);
+
+  /* ---------- свой календарь поверх <input type="date"> ----------
+     Открывается кликом по любому месту поля. Значение остаётся в ISO (2026-10-23),
+     поэтому формы и фильтры работают как раньше; с клавиатуры дату можно и печатать. */
+  const WD = [W.N('Пн'), W.N('Вт'), W.N('Ср'), W.N('Чт'), W.N('Пт'), W.N('Сб'), W.N('Вс')];
+  let calEl = null, calInp = null;
+  W.closeCal = () => { if (calEl) { calEl.remove(); calEl = null; calInp = null; } };
+  const openCal = (inp) => {
+    W.closeCal();
+    const now = new Date(), sel = inp.value ? W.parse(inp.value) : null;
+    let view = new Date((sel || now).getFullYear(), (sel || now).getMonth(), 1), mode = 'days';
+    const el = document.createElement('div');
+    el.className = 'cal';
+    const head = title => `<div class="cal-head"><button type="button" class="cal-title" data-act="mode">${title}${I('chevD', 'ic-sm')}</button><span class="spacer"></span>
+      <button type="button" class="cal-nav" data-act="prev" aria-label="←">${I('chevL', 'ic-sm')}</button><button type="button" class="cal-nav" data-act="next" aria-label="→">${I('chevR', 'ic-sm')}</button></div>`;
+    const draw = () => {
+      const y = view.getFullYear(), m = view.getMonth();
+      if (mode === 'months') {
+        el.innerHTML = head(String(y)) + `<div class="cal-months">${W.MONTHS.map((n, i) => `<button type="button" data-mon="${i}" class="${i === m ? 'on' : ''}">${t(n)}</button>`).join('')}</div>`;
+        return;
+      }
+      const start = new Date(y, m, 1 - (new Date(y, m, 1).getDay() + 6) % 7), today = W.today();
+      let cells = '';
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), iso = W.isoDay(d);
+        cells += `<button type="button" data-day="${iso}" class="${d.getMonth() !== m ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === inp.value ? 'on' : ''}">${d.getDate()}</button>`;
+      }
+      el.innerHTML = head(`${t(W.MONTHS[m])} ${y}`) + `<div class="cal-wd">${WD.map(w => `<span>${t(w)}</span>`).join('')}</div><div class="cal-days">${cells}</div>
+        <div class="cal-foot"><button type="button" data-act="clear">${t('Очистить')}</button><button type="button" data-act="today">${t('Сегодня')}</button></div>`;
+    };
+    const pick = iso => {
+      inp.value = iso;
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+      inp.dispatchEvent(new Event('change', { bubbles: true }));
+      W.closeCal();
+    };
+    draw();
+    document.body.appendChild(el);
+    const r = inp.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    let top = r.bottom + 6;
+    if (top + h > innerHeight - 8 && r.top - h - 6 > 8) top = r.top - h - 6;
+    el.style.top = Math.max(8, top) + 'px';
+    el.style.left = W.clamp(r.left, 8, innerWidth - w - 8) + 'px';
+    el.addEventListener('mousedown', e => e.preventDefault()); // фокус остаётся в поле
+    el.addEventListener('click', e => {
+      e.stopPropagation(); // после перерисовки кнопка уже не в DOM — иначе это сочтут кликом «мимо»
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.day) return pick(b.dataset.day);
+      if (b.dataset.mon) { view = new Date(view.getFullYear(), +b.dataset.mon, 1); mode = 'days'; return draw(); }
+      const a = b.dataset.act, step = mode === 'months' ? 12 : 1;
+      if (a === 'prev') view = new Date(view.getFullYear(), view.getMonth() - step, 1);
+      if (a === 'next') view = new Date(view.getFullYear(), view.getMonth() + step, 1);
+      if (a === 'mode') mode = mode === 'days' ? 'months' : 'days';
+      if (a === 'today') return pick(W.today());
+      if (a === 'clear') return pick('');
+      draw();
+    });
+    el._t = Date.now();
+    calEl = el; calInp = inp;
+  };
+  document.addEventListener('click', e => {
+    const inp = e.target.closest && e.target.closest('input[type=date].inp');
+    if (inp && !inp.disabled) { e.preventDefault(); if (calInp !== inp) openCal(inp); return; }
+    if (calEl && !calEl.contains(e.target)) W.closeCal();
+  });
+  // на телефоне системный календарь не нужен — поле только для чтения, открывается наш
+  document.addEventListener('focusin', e => { if (e.target.matches && e.target.matches('input[type=date].inp') && !matchMedia('(pointer:fine)').matches) e.target.readOnly = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && calEl) { W.closeCal(); e.stopPropagation(); } if (e.key === 'Tab') W.closeCal(); }, true);
+  addEventListener('scroll', e => { if (calEl && !calEl.contains(e.target) && Date.now() - calEl._t > 250) W.closeCal(); }, true);
+  addEventListener('resize', () => W.closeCal());
 
   /* ---------- поля форм ---------- */
   W.fi = ({ name, label, value = '', type = 'text', ph = '', money, req, hint, cls = '', attrs = '', icon, suffix }) => {

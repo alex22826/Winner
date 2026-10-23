@@ -218,14 +218,14 @@
       month: el => { st().month = el.value; W.refresh(); },
       emp: el => { st().emp = el.value; W.refresh(); },
       kind: el => { st().kind = el.value; W.refresh(); },
-      seg: el => { st().seg = el.dataset.v; W.refresh(); },
+      seg: el => { st().seg = el.dataset.v; W.swap(); },
       q: el => {
         st().q = el.value;
         if ((W.cur.params.tab || '') === 'staff') { const S = st(), q = S.q.trim().toLowerCase(); W.region('list', staffTable((S.seg === 'active' ? W.db.users.filter(u => u.active) : W.db.users.filter(u => !u.active)).filter(u => !q || (u.name + ' ' + t(u.position || '')).toLowerCase().includes(q)), W.allow('salary.edit'))); }
         else W.refresh();
       },
       lq: el => { st().lq = el.value; W.refresh(); },
-      mode: el => { st().mode = el.dataset.v; W.refresh(); },
+      mode: el => { st().mode = el.dataset.v; W.swap(); },
       ptype: el => { st().ptype = el.value; W.refresh(); },
       pmonth: el => { st().pmonth = el.value; W.refresh(); },
       year: el => { st().year = el.value; W.refresh(); },

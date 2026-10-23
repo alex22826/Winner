@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-22.1';
+  W.APP_VERSION = '2026-10-23.1';
   const DB_KEY = 'wn.db.v1';
   W.DB_VERSION = 1;
 
@@ -62,6 +62,9 @@
     try { const raw = localStorage.getItem(DB_KEY); if (raw) d = JSON.parse(raw); } catch (e) { d = null; }
     if (!d || d.v !== W.DB_VERSION) { d = W.seed(); W.db = d; W.save(true); }
     W.db = d;
+    // 2026-10-23: компания переименована, сохранённые данные обновляем без сброса
+    const co = d.settings.company;
+    if (co.name === 'ООО «EAST COLOR»') { co.name = '"SAVER PAINTS" MCHJ'; if (co.email === 'info@eastcolor.uz') co.email = 'info@saverpaints.uz'; W.save(true); }
     return d;
   };
   W.save = (silent) => {

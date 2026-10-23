@@ -116,7 +116,7 @@
         <div data-region="list">${cards()}</div>`;
     },
     actions: {
-      seg: el => { st().seg = el.dataset.v; W.refresh(); },
+      seg: el => { st().seg = el.dataset.v; W.swap(); },
       q: el => { st().q = el.value; W.region('list', cards()); },
       add: () => W.employeeForm(),
       edit: el => W.employeeForm(W.db.users.find(u => u.id === el.dataset.id)),
