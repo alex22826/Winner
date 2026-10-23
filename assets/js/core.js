@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-23.8';
+  W.APP_VERSION = '2026-10-23.9';
   const DB_KEY = 'wn.db.v1';
   W.DB_VERSION = 3;
 
@@ -332,8 +332,15 @@
     sale.shipped = true; sale.shippedAt = W.now();
     return true;
   };
+  // отгрузка в долг (решение заказчика): постоянным клиентам можно, остальным — после полной оплаты
+  // или если директор разрешил по этому заказу (sale.credit). Продажи в магазине не касается.
+  W.creditOk = s => s.source !== 'phone' || W.saleDebt(s) <= 0 || !!s.credit || !!(W.customer(s.cust) || {}).regular;
+  W.allowCredit = s => { s.credit = { by: meId(), at: W.now() }; };
+  W.stageError = r => r.credit ? W.t('Заказ не оплачен: в долг отгружаем только постоянным клиентам. Разрешить может директор.')
+    : W.t('Нельзя отгрузить без остатка: {n}', { n: r.block.map(x => x.p.name).join(', ') });
   W.setStage = (sale, stage) => {
     if (['shipping', 'done'].includes(stage) && !sale.shipped) {
+      if (!W.creditOk(sale)) return { credit: true };
       const r = W.shipSale(sale);
       if (r !== true) return r;
     }

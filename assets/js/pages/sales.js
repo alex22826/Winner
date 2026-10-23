@@ -164,6 +164,12 @@
     const paid = W.salePaid(s), debt = W.saleDebt(s), ret = W.saleReturned(s);
     const order = W.STAGES.map(x => x.id), cur = order.indexOf(s.stage);
     const next = s.stage !== 'cancelled' && cur < order.length - 1 ? W.STAGES[cur + 1] : null;
+    // можно ли отгрузить заказ в долг — подсказка в карточке, пока заказ не ушёл
+    const credit = s.source === 'phone' && !s.shipped && s.stage !== 'cancelled' && debt > 0
+      ? (c && c.regular ? { ok: true, text: t('Постоянный клиент — можно отгрузить в долг') }
+        : s.credit ? { ok: true, text: t('Отгрузку в долг разрешил {n}', { n: esc(W.shortName(W.userName(s.credit.by))) }) }
+        : { ok: false, text: t('Отгрузка — только после полной оплаты') })
+      : null;
     const stepper = s.source === 'walkin' ? '' : `<div class="card card-pad" style="box-shadow:none;margin-bottom:14px"><div class="label" style="margin-bottom:10px">${t('Стадия заказа')}</div>
       ${s.stage === 'cancelled' ? W.badge(t('Заказ отменён'), 'bad') : `<div class="stepper">${W.STAGES.map((st, i) => `<div class="step ${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="st-dot">${i < cur ? I('check') : i + 1}</div>${t(st.name)}</div>`).join('')}</div>`}</div>`;
     const html = `
@@ -184,6 +190,7 @@
           ${ret ? `<div class="row mt-8" style="justify-content:space-between"><span class="muted">${t('Возвраты')}</span><b class="money out">−${W.money(ret)}</b></div>` : ''}
           <div class="row mt-8" style="justify-content:space-between"><span class="muted">${t('Оплачено')}</span><b class="money in">${W.money(paid)}</b></div>
           <div class="row mt-8" style="justify-content:space-between;font-size:16px"><span>${t('Долг')}</span><b class="money" style="color:${debt ? 'var(--bad)' : 'var(--ok)'}">${W.money(debt)}</b></div>
+          ${credit ? `<div class="hint mt-8 row nw" style="gap:6px;align-items:flex-start;color:${credit.ok ? 'var(--text-2)' : 'var(--warn)'}">${I(credit.ok ? 'check' : 'lock', 'ic-sm')}<span>${credit.text}</span></div>` : ''}
         </div>
       </div>
       <div class="card" style="box-shadow:none;margin-bottom:14px"><div class="card-head"><h3>${t('Товары')}</h3><div class="right"><span class="sub">${t('{n} позиций', { n: s.items.length })}</span></div></div><div class="card-body flush">
@@ -206,6 +213,7 @@
     btns.push(`<div class="left"><button class="btn" data-m="waybill">${I('file')}${t('Накладная')}</button><button class="btn" data-m="invoice">${I('receipt')}${t('Счёт-фактура')}</button></div>`);
     if (!s.shipped && s.stage !== 'cancelled' && !pays.length && (W.allow('sales.create') || W.isDirector())) btns.push(`<button class="btn danger" data-m="cancel">${t('Отменить')}</button>`);
     if (s.shipped && W.allow('sales.return')) btns.push(`<button class="btn" data-m="ret">${I('undo')}${t('Возврат')}</button>`);
+    if (credit && !credit.ok && W.isDirector()) btns.push(`<button class="btn" data-m="credit">${I('check')}${t('Разрешить в долг')}</button>`);
     if (debt > 0 && W.allow('sales.pay')) btns.push(`<button class="btn ok" data-m="pay">${I('banknote')}${t('Принять оплату')}</button>`);
     if (next && W.allow('sales.stage')) btns.push(`<button class="btn primary" data-m="next">${I('chevR')}${t('Этап: {s}', { s: t(next.name) })}</button>`);
     const dm = W.drawer({
@@ -215,9 +223,14 @@
         invoice: () => W.printDoc(s, 'invoice'),
         pay: (b, mm) => { mm.close(); W.payForm(s); },
         ret: (b, mm) => { mm.close(); W.returnForm(s); },
+        credit: async (b, mm) => {
+          if (!await W.confirm({ title: t('Разрешить отгрузку в долг?'), text: t('{c} · долг {a}. Склад сможет отгрузить заказ №{n} до оплаты.', { c: esc(W.custName(s)), a: W.money(debt), n: W.no(s.no) }), ok: t('Разрешить'), danger: false, icon: 'check' })) return;
+          W.allowCredit(s); W.save(); mm.close(); W.toast(t('Заказ №{n} можно отгрузить в долг', { n: W.no(s.no) }));
+          setTimeout(() => W.openSale(s.id), 220);
+        },
         next: (b, mm) => {
           const r = W.setStage(s, next.id);
-          if (r !== true) return W.toast(t('Нельзя отгрузить без остатка: {n}', { n: r.block.map(x => x.p.name).join(', ') }), 'err');
+          if (r !== true) return W.toast(W.stageError(r), r.credit ? 'warn' : 'err');
           W.save(); mm.close(); W.toast(t('Заказ №{n}: {s}', { n: W.no(s.no), s: t(next.name) }));
           setTimeout(() => W.openSale(s.id), 220);
         },
@@ -453,7 +466,7 @@
         const s = W.db.sales.find(x => x.id === el.dataset.id), i = W.STAGES.findIndex(x => x.id === s.stage), nx = W.STAGES[i + 1];
         if (!nx) return;
         const r = W.setStage(s, nx.id);
-        if (r !== true) return W.toast(t('Нельзя отгрузить без остатка: {n}', { n: r.block.map(x => x.p.name).join(', ') }), 'err');
+        if (r !== true) return W.toast(W.stageError(r), r.credit ? 'warn' : 'err');
         W.save(); W.toast(t('Заказ №{n}: {s}', { n: W.no(s.no), s: t(nx.name) }));
       },
       csv: () => {

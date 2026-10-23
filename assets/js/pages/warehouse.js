@@ -110,6 +110,7 @@
           <b>${esc(W.custName(s))}</b>
           <div class="kc-meta">${s.address ? `<span class="ellipsis">${I('pin', 'ic-sm')} ${esc(s.address)}</span>` : ''}<span>${t('{n} позиций', { n: s.items.length })} · ${W.qty(W.sum(s.items, x => x.qty))} ${t('шт')}</span></div>
           <div class="kc-foot"><span class="money">${W.money(s.total)}</span>${W.payBadge(s)}</div>
+          ${!s.shipped && !W.creditOk(s) ? `<div class="row nw mt-8" style="gap:6px;font-size:12.5px;color:var(--warn)">${I('lock', 'ic-sm')}${t('Отгрузка после оплаты')}</div>` : ''}
           ${can && next ? `<button class="btn sm block mt-8" data-a="next" data-id="${s.id}">${t('Дальше: {s}', { s: t(next.name) })}${I('chevR', 'ic-sm')}</button>` : ''}
         </div>`).join('') : `<div class="muted" style="font-size:13px;padding:8px 4px">${stg.id === 'done' ? t('За неделю ничего не доставлено') : t('Пусто')}</div>`}</div>`;
     }).join('')}</div>`;
@@ -169,7 +170,7 @@
         const s = W.db.sales.find(x => x.id === el.dataset.id);
         const i = W.STAGES.findIndex(x => x.id === s.stage), nx = W.STAGES[i + 1];
         const r = W.setStage(s, nx.id);
-        if (r !== true) return W.toast(t('Нельзя отгрузить без остатка: {n}', { n: r.block.map(x => x.p.name).join(', ') }), 'err');
+        if (r !== true) return W.toast(W.stageError(r), r.credit ? 'warn' : 'err');
         W.save(); W.toast(t('Заказ №{n}: {s}', { n: W.no(s.no), s: t(nx.name) }));
       },
       csv: () => {
