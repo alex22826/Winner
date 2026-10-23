@@ -40,6 +40,14 @@
       return { head: [t('Клиент'), t('Телефон'), t('Заказов с долгом'), t('Самый старый, дней'), t('Сумма долга')],
         rows: rows.map(([k, a]) => [k, a.phone || '', a.n, W.daysBetween(a.old, W.today()), M(a.d)]), foot: [t('Итого'), '', W.sum(rows, r => r[1].n), '', M(W.sum(rows, r => r[1].d))] };
     } },
+    { id: 'supdebts', icon: 'box', page: 'income', noPeriod: true, title: W.N('Долги поставщикам'), desc: W.N('Сколько мы должны за принятое сырьё'), build: () => {
+      const by = {};
+      W.db.purchases.filter(p => W.purchaseDebt(p) > 0).forEach(p => { const a = by[p.sup] || (by[p.sup] = { n: 0, total: 0, d: 0, old: p.at }); a.n++; a.total += p.total; a.d += W.purchaseDebt(p); if (p.at < a.old) a.old = p.at; });
+      const rows = Object.entries(by).sort((a, b) => b[1].d - a[1].d);
+      return { head: [t('Поставщик'), t('Телефон'), t('Приходов с долгом'), t('Самый старый, дней'), t('Сумма приходов'), t('Сумма долга')],
+        rows: rows.map(([id, a]) => { const s = W.supplier(id) || {}; return [s.name || '—', s.phone || '', a.n, W.daysBetween(a.old, W.today()), M(a.total), M(a.d)]; }),
+        foot: [t('Итого'), '', W.sum(rows, r => r[1].n), '', M(W.sum(rows, r => r[1].total)), M(W.sum(rows, r => r[1].d))] };
+    } },
     { id: 'stock', icon: 'warehouse', page: 'warehouse', noPeriod: true, title: W.N('Остатки на складе'), desc: W.N('Готовая продукция: остаток, резерв, стоимость'), build: () => {
       const ps = W.db.products.filter(p => !p.archived);
       return { head: [t('Товар'), t('Категория'), t('На складе'), t('В резерве'), t('Цена'), t('Стоимость')],
@@ -58,6 +66,14 @@
       const rows = Object.entries(agg).sort((a, b) => b[1].q - a[1].q);
       return { head: [t('Продукция'), t('Документов'), t('Выпущено, шт'), t('Себестоимость')], rows: rows.map(([p, a]) => [(W.product(p) || {}).name, a.n, Q(a.q), M(a.c)]),
         foot: [t('Итого'), W.sum(rows, r => r[1].n), Q(W.sum(rows, r => r[1].q)), M(W.sum(rows, r => r[1].c))] };
+    } },
+    { id: 'writeoffs', icon: 'trash', page: 'warehouse', title: W.N('Списание брака'), desc: W.N('Что списано, по какой причине и на какую сумму'), build: (f, to) => {
+      const rows = W.db.writeoffs.filter(w => W.inRange(w.at, f, to)).slice().reverse();
+      const nm = w => ((w.t === 'p' ? W.product(w.item) : W.material(w.item)) || {}).name || '—';
+      const un = w => w.t === 'p' ? t('шт') : t((W.material(w.item) || {}).unit || '');
+      return { head: [t('№'), t('Дата'), t('Тип'), t('Наименование'), t('Кол-во'), t('Причина'), t('Сумма')],
+        rows: rows.map(w => [w.no, W.fmtDT(w.at), w.t === 'p' ? t('Продукция') : t('Сырьё'), nm(w), `${W.qty(w.qty)} ${un(w)}`, w.note ? `${t(w.reason)}: ${w.note}` : t(w.reason), M(w.cost)]),
+        foot: [t('Итого'), '', '', t('списаний: {n}', { n: rows.length }), '', '', M(W.sum(rows, w => w.cost))] };
     } },
     { id: 'expenses', icon: 'receipt', page: 'expense', title: W.N('Расходы по категориям'), desc: W.N('Структура расходов за период'), build: (f, to) => {
       const agg = {};

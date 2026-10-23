@@ -123,7 +123,20 @@
   /* ---------- страница ---------- */
   let draft = null;
   const dirty = () => draft && JSON.stringify(draft) !== JSON.stringify(pickSettings());
-  const pickSettings = () => { const s = W.db.settings; return { company: Object.assign({}, s.company), currency: s.currency, usdRate: s.usdRate, numbering: Object.assign({}, s.numbering), lowStock: s.lowStock, vat: s.vat ?? 12 }; };
+  // роли, которым директор настраивает видимые разделы; «Управление» остаётся только директору
+  const EDIT_ROLES = Object.keys(W.ROLES).filter(r => r !== 'director');
+  const ROLE_PAGES = W.NAV.flatMap(g => g.items.map(i => i[0])).filter(p => p !== 'staff' && p !== 'admin');
+  const navLabel = p => { for (const g of W.NAV) for (const i of g.items) if (i[0] === p) return i[1]; return p; };
+  const pickSettings = () => { const s = W.db.settings; return { company: Object.assign({}, s.company), currency: s.currency, usdRate: s.usdRate, numbering: Object.assign({}, s.numbering), lowStock: s.lowStock, vat: s.vat ?? 12,
+    rolePages: Object.fromEntries(EDIT_ROLES.map(r => [r, ROLE_PAGES.filter(p => W.rolePages(r).includes(p))])) }; };
+  const rolesHTML = () => EDIT_ROLES.map(r => {
+    const on = draft.rolePages[r], def = ROLE_PAGES.filter(p => W.ROLES[r].pages.includes(p));
+    const same = on.length === def.length && def.every(p => on.includes(p));
+    const cnt = W.db.users.filter(u => u.roles.includes(r)).length;
+    return `<div class="role-perm"><div class="row nw" style="justify-content:space-between;gap:10px"><div style="min-width:0"><b>${W.roleName(r)}</b><div class="muted" style="font-size:12.5px">${t('сотрудников: {n}', { n: cnt })}</div></div>
+      ${same ? `<span class="tag">${t('по умолчанию')}</span>` : `<button class="btn sm ghost" data-a="roleDef" data-r="${r}">${I('refresh', 'ic-sm')}${t('Как было')}</button>`}</div>
+      <div class="chips-pick mt-8">${ROLE_PAGES.map(p => `<label class="chip-pick"><input type="checkbox" data-change="rp" data-r="${r}" data-p="${p}" ${on.includes(p) ? 'checked' : ''}><span>${t(navLabel(p))}</span></label>`).join('')}</div></div>`;
+  }).join('');
   const savebar = () => dirty() ? `<div class="savebar">${I('alert')}<span style="flex:1">${t('Есть несохранённые изменения')}</span><button class="btn sm ghost" style="color:#fff" data-a="undo">${t('Отменить')}</button><button class="btn sm primary" data-a="save">${I('check')}${t('Сохранить')}</button></div>` : '';
 
   W.page('admin', {
@@ -144,6 +157,8 @@
               <div class="field"><label>${t('Ставка НДС')}</label><div class="inp-wrap has-suffix"><input class="inp num" data-on="vat" inputmode="decimal" value="${draft.vat}"><span class="suffix">%</span></div><div class="hint">${t('Для счёт-фактуры; 0 — без НДС')}</div></div></div></div>
           <div class="set-row"><div><h4>${t('Нумерация документов')}</h4><p>${t('Первый новый документ получит стартовый номер, дальше номера идут по возрастанию')}</p></div>
             <div class="form-grid g3">${NUMS.map(([k, n]) => `<div class="field"><label>${t(n)}</label><input class="inp num" data-on="num" data-k="${k}" inputmode="numeric" value="${draft.numbering[k]}"><div class="hint">${t('следующий: №{n}', { n: W.no(nextOf(k, +draft.numbering[k] || 1)) })}</div></div>`).join('')}</div></div>
+          <div class="set-row"><div><h4>${t('Права ролей')}</h4><p>${t('Какие разделы видит каждая роль. Действия внутри раздела (создать, оплатить, подтвердить) остаются по роли. «Сотрудники» и «Администрирование» — только у директора.')}</p></div>
+            <div class="vstack" data-region="roles">${rolesHTML()}</div></div>
         </div>
         <div class="grid g-2 mt-16">
           <div class="card card-pad"><div class="row nw"><div class="kpi-ic c-ok">${I('upload')}</div><div><h3 style="font-size:16px">${t('Перенос данных из Excel')}</h3><div class="muted" style="font-size:13px">${t('Товары, сырьё, контрагенты и поставщики из ваших таблиц')}</div></div></div>
@@ -160,11 +175,19 @@
       low: el => { draft.lowStock = Math.max(0, Math.round(W.parseNum(el.value))); W.region('savebar', savebar()); },
       vat: el => { draft.vat = W.clamp(W.parseNum(el.value), 0, 100); W.region('savebar', savebar()); },
       num: el => { draft.numbering[el.dataset.k] = Math.max(1, Math.round(W.parseNum(el.value)) || 1); el.closest('.field').querySelector('.hint').textContent = t('следующий: №{n}', { n: W.no(nextOf(el.dataset.k, draft.numbering[el.dataset.k])) }); W.region('savebar', savebar()); },
+      rp: el => {
+        const { r, p } = el.dataset, list = draft.rolePages[r];
+        draft.rolePages[r] = el.checked ? ROLE_PAGES.filter(x => x === p || list.includes(x)) : list.filter(x => x !== p);
+        W.region('roles', rolesHTML()); W.region('savebar', savebar());
+      },
+      roleDef: b => { const r = b.dataset.r; draft.rolePages[r] = ROLE_PAGES.filter(p => W.ROLES[r].pages.includes(p)); W.region('roles', rolesHTML()); W.region('savebar', savebar()); },
       undo: () => { draft = null; W.refresh(); },
       save: () => {
         if (!draft.company.name) return W.toast(t('Укажите название организации'), 'warn');
-        Object.assign(W.db.settings, { company: draft.company, currency: draft.currency, usdRate: draft.usdRate, numbering: draft.numbering, lowStock: draft.lowStock, vat: draft.vat });
-        draft = null; W.save(); W.toast(t('Настройки сохранены'));
+        const empty = EDIT_ROLES.find(r => !draft.rolePages[r].length);
+        if (empty) return W.toast(t('У роли «{r}» не выбран ни один раздел', { r: W.roleName(empty) }), 'warn');
+        Object.assign(W.db.settings, { company: draft.company, currency: draft.currency, usdRate: draft.usdRate, numbering: draft.numbering, lowStock: draft.lowStock, vat: draft.vat, rolePages: draft.rolePages });
+        draft = null; W.save(); W.toast(t('Настройки сохранены')); W.refresh();
       },
       import: () => importDialog(),
       tpl: () => W.modal({ size: 'sm', title: t('Шаблоны для загрузки'), icon: 'download', body: Object.entries(SPEC).map(([k, v]) => `<button class="pop-item" data-m="dl" data-k="${k}"><span class="pi-ic">${I('file', 'ic-sm')}</span>${t(v.name)}</button>`).join(''), actions: { dl: b => templateCSV(b.dataset.k) } }),

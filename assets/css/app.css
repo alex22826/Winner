@@ -488,6 +488,7 @@ select.inp.sm { padding-right: 30px; background-position: right 9px center; }
 .inp.num { text-align: right; font-variant-numeric: tabular-nums; }
 .inp-wrap { position: relative; display: flex; align-items: center; }
 .inp-wrap .inp { padding-left: 38px; }
+.inp-wrap.has-suffix:not(:has(> .ic)) .inp { padding-left: 13px; }
 .inp-wrap > .ic { position: absolute; left: 12px; color: var(--muted); width: 18px; height: 18px; pointer-events: none; }
 .inp-wrap .suffix { position: absolute; right: 12px; font-size: 13px; color: var(--muted); pointer-events: none; }
 .inp-wrap.has-suffix .inp { padding-right: 52px; }
@@ -886,6 +887,8 @@ input[type=date].inp:read-only { color: var(--text); }
 /* настройки */
 .set-row { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--line); }
 .set-row:last-child { border-bottom: 0; }
+.role-perm { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2, transparent); }
+.role-perm + .role-perm { margin-top: -6px; }
 .set-row h4 { font-size: 15px; font-weight: 650; }
 .set-row p { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .savebar {

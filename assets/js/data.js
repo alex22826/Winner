@@ -110,7 +110,7 @@
     const db = {
       v: W.DB_VERSION, created: now, seq: { sale: null, waybill: null, invoice: null, prod: null, purchase: null, ret: null },
       settings, users, customers, suppliers, categories, products, materials: materials.map(({ stock, ...m }) => m), recipes,
-      moves: [], sales: [], payments: [], returns: [], cash: [], bank: [], expenses: [], purchases: [], prodOrders: [],
+      moves: [], sales: [], payments: [], returns: [], cash: [], bank: [], expenses: [], purchases: [], prodOrders: [], writeoffs: [],
       accruals: [], payouts: [], salaryLog: [],
     };
 
@@ -173,6 +173,22 @@
     /* ---------- задание на выпуск в работе — чтобы считалась потребность в сырье ---------- */
     db.prodOrders.push({ id: id('po'), no: 1, at: at(0, '08:30'), p: 'p4', qty: 60, status: 'work', startedAt: at(0, '08:40'), note: 'Нет в наличии — срочный выпуск', by: 'u_tex' });
 
+    /* ---------- 2 прихода сырья: один оплачен, второй частично — долг поставщику ---------- */
+    const purchase = (no, a, sup, items, paid, note) => {
+      const p = { id: id('pu'), no, at: a, sup, items: items.map(([m, qty]) => ({ m, qty, price: materials.find(x => x.id === m).price })), note, method: 'transfer', by: 'u_skl' };
+      p.total = W.sum(p.items, i => i.qty * i.price);
+      db.purchases.push(p);
+      p.items.forEach(i => mv('m', i.m, 'raw', i.qty, 'purchase', p.id, a, 'u_skl'));
+      money('transfer', -1, paid === true ? p.total : paid, a, 'purchase', p.id, `Оплата поставщику, приход №${W.no(no)}`, suppliers.find(s => s.id === sup).name, W.no(no), 'u_buh', true);
+    };
+    purchase(1, at(-4, '10:30'), 's5', [['m18', 400], ['m19', 300]], true, 'Накладная поставщика № ТП-0412');
+    purchase(2, at(-2, '14:00'), 's1', [['m1', 300], ['m14', 100]], 4000000, 'Отсрочка оплаты 14 дней');
+
+    /* ---------- списание брака: помятые банки лака ---------- */
+    const woCost = W.sum(recipes.p5, r => r.qty * materials.find(x => x.id === r.m).price) * 2;
+    db.writeoffs.push({ id: id('wo'), no: 1, at: at(-1, '11:20'), t: 'p', item: 'p5', qty: 2, reason: 'Повреждение при хранении', note: 'Помятые банки', cost: Math.round(woCost), by: 'u_skl' });
+    mv('p', 'p5', 'main', -2, 'writeoff', db.writeoffs[0].id, at(-1, '11:20'), 'u_skl', 'Повреждение при хранении: Помятые банки');
+
     /* ---------- 4 расхода компании ---------- */
     const exp = (d, hm, cat, desc, amount, method, confirmed) => {
       const e = { id: id('e'), at: at(d, hm), cat, desc, amount, method, by: 'u_buh' };
@@ -213,7 +229,7 @@
     /* ---------- порядок и нумерация ---------- */
     ['moves', 'sales', 'payments', 'cash', 'bank', 'expenses', 'accruals', 'payouts', 'salaryLog'].forEach(k => db[k].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)));
     db.sales.sort((a, b) => a.no - b.no);
-    db.seq.sale = 1003; db.seq.prod = 1;
+    db.seq.sale = 1003; db.seq.prod = 1; db.seq.purchase = 2;
     db.users.find(u => u.id === 'u_dir').lastLogin = `${W.addDays(today, -1)}T18:12`;
     return db;
   };

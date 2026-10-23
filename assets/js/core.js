@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-23.6';
+  W.APP_VERSION = '2026-10-23.7';
   const DB_KEY = 'wn.db.v1';
   W.DB_VERSION = 3;
 
@@ -72,6 +72,7 @@
     if (d && d.v === 2) migrate2to3(d); // данные пользователя переносим, а не сбрасываем
     if (!d || d.v !== W.DB_VERSION) { d = W.seed(); W.db = d; W.save(true); }
     W.db = d;
+    if (!d.writeoffs) { d.writeoffs = []; W.save(true); } // списания брака появились позже
     // 2026-10-23: компания переименована, сохранённые данные обновляем без сброса
     const co = d.settings.company;
     if (co.name === 'ООО «EAST COLOR»') { co.name = '"SAVER PAINTS" MCHJ'; if (co.email === 'info@eastcolor.uz') co.email = 'info@saverpaints.uz'; W.save(true); }
@@ -138,7 +139,13 @@
   };
   W.roleName = r => W.t((W.ROLES[r] || {}).name || r);
   const roles = u => (u && u.roles) || [];
-  W.can = (page, u = W.me()) => page === 'profile' || roles(u).some(r => { const p = (W.ROLES[r] || {}).pages; return p === '*' || (p || []).includes(page); });
+  // разделы роли: директор может переопределить их в Администрировании (settings.rolePages); директору — всё
+  W.rolePages = r => {
+    if (r === 'director') return '*';
+    const o = W.db && W.db.settings.rolePages && W.db.settings.rolePages[r];
+    return o || (W.ROLES[r] || {}).pages || [];
+  };
+  W.can = (page, u = W.me()) => page === 'profile' || roles(u).some(r => { const p = W.rolePages(r); return p === '*' || p.includes(page); });
   W.allow = (act, u = W.me()) => roles(u).some(r => { const a = (W.ROLES[r] || {}).acts; return a === '*' || (a || []).includes(act); });
   W.isDirector = (u = W.me()) => roles(u).includes('director');
 
@@ -440,6 +447,23 @@
     W.move('p', o.p, W.FG, o.qty, 'produce', o.id);
     o.status = 'done'; o.doneAt = W.now(); o.cost = W.round(W.unitCost(o.p) * o.qty);
     return true;
+  };
+
+  /* долги поставщикам: сумма прихода минус оплаты по нему (касса и банк) */
+  W.purchasePaid = p => W.round(W.sum(W.db.bank.filter(b => b.ref === p.id && b.dir < 0), b => b.amount) + W.sum(W.db.cash.filter(c => c.ref === p.id && c.dir < 0), c => c.amount));
+  W.purchaseDebt = p => Math.max(0, W.round(p.total - W.purchasePaid(p)));
+  W.payPurchase = (p, method, amount) => W.moneyMove({ method, dir: -1, amount: Math.min(amount, W.purchaseDebt(p)), kind: 'purchase', ref: p.id,
+    note: W.t('Оплата поставщику, приход №{n}', { n: W.no(p.no) }), party: (W.supplier(p.sup) || {}).name, num: W.no(p.no) });
+
+  /* списание брака: готовая продукция — со склада, сырьё — с производства */
+  // стоимость брака: сырьё — по цене закупки, продукция — по себестоимости рецептуры (если её нет — по цене продажи)
+  W.writeOff = ({ t, item, qty, reason, note = '' }) => {
+    const x = t === 'm' ? W.material(item) : W.product(item);
+    const unit = t === 'm' ? (x.price || 0) : (W.unitCost(item) || x.price || 0);
+    const w = { id: W.uid('wo'), no: (W.db.writeoffs.length ? W.db.writeoffs[W.db.writeoffs.length - 1].no : 0) + 1, at: W.now(), t, item, qty: W.round(qty, 3), reason, note, cost: W.round(unit * qty), by: meId() };
+    W.db.writeoffs.push(w);
+    W.move(t, item, t === 'm' ? 'raw' : W.FG, -qty, 'writeoff', w.id, note ? `${reason}: ${note}` : reason);
+    return w;
   };
 
   W.transfer = ({ p, from, to, qty, note }) => {
