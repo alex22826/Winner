@@ -359,20 +359,23 @@
       ], rows, empty: W.empty(t('Возвратов за период нет'), t('Оформить возврат можно из карточки продажи'), 'undo'),
     })}</div>`;
   };
+  // Долги по отгрузке: клиент оплатил (полностью или частично), а товар ещё не отгружен
+  const shipDebtRows = (q = '') => W.activeSales().filter(s => W.shipDebt(s) > 0 && match(s, q)).sort((a, b) => a.at < b.at ? -1 : 1);
+  const firstPay = s => (W.db.payments.find(p => p.sale === s.id && p.amount > 0) || {}).at || s.at;
   const listDebts = () => {
-    const S = st(), q = S.q.trim().toLowerCase();
-    const rows = W.activeSales().filter(s => W.saleDebt(s) > 0 && match(s, q)).sort((a, b) => a.at < b.at ? -1 : 1);
-    return `<div class="card">${W.table({
+    const S = st(), rows = shipDebtRows(S.q.trim().toLowerCase()), canStage = W.allow('sales.stage');
+    return `<div class="hint mb-16">${t('Клиент уже оплатил, а товар ещё не отгружен — на эту сумму мы должны отгрузить товар. Строка уходит из списка, когда заказ отправлен в путь.')}</div>
+    <div class="card">${W.table({
       cols: [
         { label: t('Продажа'), title: true, render: s => `<div class="cell-main">№${W.no(s.no)} · ${esc(W.custName(s))}</div><div class="cell-sub">${W.fmtDate(s.at)}${s.phone ? ' · ' + esc(s.phone) : ''}</div>` },
-        { label: t('Долг'), r: true, aside: true, render: s => `<span class="money" style="color:var(--bad)">${W.money(W.saleDebt(s))}</span>` },
-        { label: t('Сумма'), r: true, render: s => `<span class="money">${W.money(W.saleNet(s))}</span>` },
-        { label: t('Оплачено'), r: true, render: s => `<span class="money">${W.money(W.salePaid(s))}</span>` },
-        { label: t('Дней'), r: true, render: s => { const d = W.daysBetween(s.at, W.today()); return `<span class="badge ${d > 14 ? 'bad' : d > 5 ? 'warn' : ''} plain">${d}</span>`; } },
+        { label: t('Должны отгрузить на'), r: true, aside: true, render: s => `<span class="money" style="color:var(--warn)">${W.money(W.shipDebt(s))}</span>` },
+        { label: t('Сумма заказа'), r: true, render: s => `<span class="money">${W.money(W.saleNet(s))}</span>` },
+        { label: t('Оплачено'), r: true, render: s => `<span class="money in">${W.money(W.salePaid(s))}</span>` },
+        { label: t('Ждёт, дней'), r: true, render: s => { const d = W.daysBetween(firstPay(s), W.today()); return `<span class="badge ${d > 3 ? 'bad' : d > 1 ? 'warn' : ''} plain">${d}</span>`; } },
         { label: t('Стадия'), render: s => W.stageBadge(s) },
-        { label: '', cls: 'w-act', render: s => `<div class="act">${W.allow('sales.pay') ? `<button class="go" data-a="pay" data-id="${s.id}" title="${t('Принять оплату')}">${I('banknote')}</button>` : ''}<button data-a="openSale" data-id="${s.id}" title="${t('Открыть')}">${I('eye')}</button></div>` },
-      ], rows, rowAttr: s => `class="click" data-a="openSale" data-id="${s.id}"`, empty: W.empty(t('Долгов нет'), t('Все отгрузки оплачены'), 'checkCircle'),
-      foot: rows.length ? [t('Итого долг'), `<span class="money" style="color:var(--bad)">${W.money(W.sum(rows, s => W.saleDebt(s)))}</span>`, '', '', '', '', ''] : null,
+        { label: '', cls: 'w-act', render: s => `<div class="act">${canStage ? `<button class="go" data-a="nextStage" data-id="${s.id}" title="${t('Следующая стадия')}">${I('truck')}</button>` : ''}<button data-a="openSale" data-id="${s.id}" title="${t('Открыть')}">${I('eye')}</button></div>` },
+      ], rows, rowAttr: s => `class="click" data-a="openSale" data-id="${s.id}"`, empty: W.empty(t('Долгов по отгрузке нет'), t('Все оплаченные заказы отгружены'), 'checkCircle'),
+      foot: rows.length ? [t('Итого'), `<span class="money" style="color:var(--warn)">${W.money(W.sum(rows, s => W.shipDebt(s)))}</span>`, '', '', '', '', ''] : null,
     })}</div>`;
   };
   const listHistory = () => {
@@ -410,13 +413,14 @@
       }
       return `<div class="page-head"><div><h1>${t('Продажи')}</h1><div class="sub">${t('Оплаты, возвраты, долги по отгрузке и история продаж')}</div></div>
         <div class="actions">${W.allow('sales.create') ? `<button class="btn" data-a="phone">${I('phone')}${t('Заказ по телефону')}</button><button class="btn primary" data-a="new">${I('plus')}${t('Новая продажа')}</button>` : ''}</div></div>
-        <div class="kpis">
+        <div class="kpis k5">
           ${W.kpi({ label: t('Продажи за месяц'), value: W.moneyKpi(monSales), icon: 'trendUp', foot: t('{n} продаж', { n: ST.monthCount }) })}
           ${W.kpi({ label: t('Получено оплат'), value: W.moneyKpi(monPaid), icon: 'banknote', c: 'c-ok', foot: t('за месяц') })}
-          ${W.kpi({ label: t('Долги по отгрузке'), value: W.moneyKpi(ST.debt), icon: 'alert', c: 'c-bad', foot: t('{n} заказов', { n: ST.debtCount }) })}
-          ${W.kpi({ label: t('Возвраты'), value: W.moneyKpi(monRet), icon: 'undo', c: 'c-warn', foot: t('за месяц') })}
+          ${W.kpi({ label: t('Долги по отгрузке'), value: W.moneyKpi(ST.shipDebt), icon: 'truck', c: 'c-warn', link: 'sales?tab=debts', foot: t('{n} оплаченных заказов ждут отгрузки', { n: ST.shipDebtCount }) })}
+          ${W.kpi({ label: t('Долги клиентов'), value: W.moneyKpi(ST.debt), icon: 'alert', c: 'c-bad', foot: t('{n} заказов не оплачено полностью', { n: ST.debtCount }) })}
+          ${W.kpi({ label: t('Возвраты'), value: W.moneyKpi(monRet), icon: 'undo', c: 'c-vio', foot: t('за месяц') })}
         </div>
-        ${W.tabs([{ id: 'payments', label: t('Оплаты'), icon: 'banknote' }, { id: 'returns', label: t('Возвраты'), icon: 'undo', cnt: W.db.returns.length || null }, { id: 'debts', label: t('Долги по отгрузке'), icon: 'alert', cnt: ST.debtCount || null, hot: true }, { id: 'history', label: t('История'), icon: 'history' }], tab)}
+        ${W.tabs([{ id: 'payments', label: t('Оплаты'), icon: 'banknote' }, { id: 'returns', label: t('Возвраты'), icon: 'undo', cnt: W.db.returns.length || null }, { id: 'debts', label: t('Долги по отгрузке'), icon: 'truck', cnt: ST.shipDebtCount || null, hot: true }, { id: 'history', label: t('История'), icon: 'history' }], tab)}
         <div class="toolbar">${W.searchBox(S.q, 'q', t('Клиент, телефон или № продажи'))}<div class="filters">${filters.join('')}</div>
           ${tab === 'payments' && W.allow('sales.pay') ? `<span class="grow"></span><button class="btn" data-a="payPick">${I('banknote')}${t('Принять оплату')}</button>` : ''}
           ${tab === 'returns' && W.allow('sales.return') ? `<span class="grow"></span><button class="btn" data-a="retPick">${I('undo')}${t('Оформить возврат')}</button>` : ''}
@@ -437,10 +441,22 @@
       pay: el => W.payForm(W.db.sales.find(s => s.id === el.dataset.id)),
       payPick: () => pickSale(W.activeSales().filter(s => W.saleDebt(s) > 0), t('Принять оплату'), s => W.payForm(s), s => `${t('долг')} ${W.money(W.saleDebt(s))}`),
       retPick: () => pickSale(W.db.sales.filter(s => s.shipped && s.items.some(i => i.qty > W.returnedQty(s, i.p))).slice(-150), t('Оформить возврат'), s => W.returnForm(s), s => W.money(s.total)),
+      nextStage: (el, e) => {
+        e.stopPropagation();
+        const s = W.db.sales.find(x => x.id === el.dataset.id), i = W.STAGES.findIndex(x => x.id === s.stage), nx = W.STAGES[i + 1];
+        if (!nx) return;
+        const r = W.setStage(s, nx.id);
+        if (r !== true) return W.toast(t('Нельзя отгрузить без остатка: {n}', { n: r.block.map(x => x.p.name).join(', ') }), 'err');
+        W.save(); W.toast(t('Заказ №{n}: {s}', { n: W.no(s.no), s: t(nx.name) }));
+      },
       csv: () => {
         const tab = W.cur.params.tab;
-        const rows = tab === 'debts' ? W.activeSales().filter(s => W.saleDebt(s) > 0) : W.db.sales.filter(s => { const [f, to] = W.periodRange(st().period); return W.inRange(s.at, f, to); });
-        W.downloadCSV(tab === 'debts' ? t('Долги по отгрузке') : t('История продаж'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма'), t('Оплачено'), t('Долг'), t('Стадия')],
+        if (tab === 'debts') {
+          return W.downloadCSV(t('Долги по отгрузке'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма заказа'), t('Оплачено'), t('Должны отгрузить на'), t('Стадия')],
+            shipDebtRows().map(s => [W.no(s.no), W.fmtDT(s.at), t(W.CHANNELS[s.channel]), W.custName(s), s.phone, W.saleNet(s), W.salePaid(s), W.shipDebt(s), W.stageName(s.stage)]));
+        }
+        const rows = W.db.sales.filter(s => { const [f, to] = W.periodRange(st().period); return W.inRange(s.at, f, to); });
+        W.downloadCSV(t('История продаж'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма'), t('Оплачено'), t('Долг'), t('Стадия')],
           rows.map(s => [W.no(s.no), W.fmtDT(s.at), t(W.CHANNELS[s.channel]), W.custName(s), s.phone, W.round(s.total), W.salePaid(s), W.saleDebt(s), W.stageName(s.stage)]));
       },
     },

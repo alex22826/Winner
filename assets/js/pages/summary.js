@@ -33,7 +33,8 @@
       const monSales = act.filter(s => s.at.slice(0, 7) === mon);
       const pays = W.db.payments.filter(p => inP(p.at));
       const upTo = x => x.at.slice(0, 10) <= to;
-      const debtSales = act.filter(s => upTo(s) && W.saleDebt(s) > 0);
+      // долги по отгрузке: оплачено клиентами, но ещё не отгружено (на конец периода)
+      const debtSales = act.filter(s => upTo(s) && W.shipDebt(s) > 0);
       const pend = W.db.bank.filter(b => b.status === 'pending').length;
       const toLabel = to === today ? t('сегодня') : W.dayShort(to);
 
@@ -48,7 +49,7 @@
         W.kpi({ label: t('Касса'), value: W.moneyKpi(W.sum(W.db.cash.filter(c => c.acc === 'cash' && upTo(c)), c => c.dir * c.amount)), icon: 'wallet', c: 'c-ok', link: 'cash', foot: t('наличные на {d}', { d: toLabel }) }),
         W.kpi({ label: t('Расчётный счёт'), value: W.moneyKpi(W.sum(W.db.bank.filter(b => b.status === 'confirmed' && upTo(b)), b => b.dir * b.amount)), icon: 'bank', link: 'bank', foot: pend ? `<span class="badge warn">${t('{n} ждут подтверждения', { n: pend })}</span>` : t('все операции подтверждены') }),
       );
-      kpis.push(W.kpi({ label: t('Долги по отгрузке'), value: W.moneyKpi(W.sum(debtSales, s => W.saleDebt(s))), icon: 'alert', c: 'c-bad', link: 'sales?tab=debts', foot: t('{n} заказов не оплачено полностью', { n: debtSales.length }) }));
+      kpis.push(W.kpi({ label: t('Долги по отгрузке'), value: W.moneyKpi(W.sum(debtSales, s => W.shipDebt(s))), icon: 'truck', c: 'c-warn', link: 'sales?tab=debts', foot: t('{n} оплаченных заказов ждут отгрузки', { n: debtSales.length }) }));
 
       // график: один день — по часам, до двух месяцев — по дням, дольше — по месяцам
       const pts = [];

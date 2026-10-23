@@ -27,7 +27,13 @@
       const rows = Object.keys(W.CHANNELS).map(c => { const x = ss.filter(s => s.channel === c), sum = W.sum(x, s => W.saleNet(s)); return [t(W.CHANNELS[c]), x.length, M(sum), M(x.length ? sum / x.length : 0), M(W.sum(x, s => W.saleDebt(s)))]; });
       return { head: [t('Канал'), t('Продаж'), t('Сумма'), t('Средний чек'), t('Долг')], rows, foot: [t('Итого'), ss.length, M(W.sum(ss, s => W.saleNet(s))), M(ss.length ? W.sum(ss, s => W.saleNet(s)) / ss.length : 0), M(W.sum(ss, s => W.saleDebt(s)))] };
     } },
-    { id: 'debts', icon: 'alert', page: 'sales', noPeriod: true, title: W.N('Долги клиентов'), desc: W.N('Кто и сколько должен по отгрузкам'), build: () => {
+    { id: 'shipdebts', icon: 'truck', page: 'sales', noPeriod: true, title: W.N('Долги по отгрузке'), desc: W.N('Оплачено клиентами, но ещё не отгружено'), build: () => {
+      const rows = W.activeSales().filter(s => W.shipDebt(s) > 0);
+      return { head: [t('№'), t('Дата'), t('Клиент'), t('Стадия'), t('Сумма заказа'), t('Оплачено'), t('Должны отгрузить на')],
+        rows: rows.map(s => [W.no(s.no), W.fmtDT(s.at), W.custName(s), W.stageName(s.stage), M(W.saleNet(s)), M(W.salePaid(s)), M(W.shipDebt(s))]),
+        foot: [t('Итого'), '', t('{n} заказов', { n: rows.length }), '', M(W.sum(rows, s => W.saleNet(s))), M(W.sum(rows, s => W.salePaid(s))), M(W.sum(rows, s => W.shipDebt(s)))] };
+    } },
+    { id: 'debts', icon: 'alert', page: 'sales', noPeriod: true, title: W.N('Долги клиентов'), desc: W.N('Кто и сколько не доплатил за товар'), build: () => {
       const by = {};
       W.activeSales().filter(s => W.saleDebt(s) > 0).forEach(s => { const k = W.custName(s); const a = by[k] || (by[k] = { n: 0, d: 0, old: s.at, phone: s.phone }); a.n++; a.d += W.saleDebt(s); if (s.at < a.old) a.old = s.at; });
       const rows = Object.entries(by).sort((a, b) => b[1].d - a[1].d);

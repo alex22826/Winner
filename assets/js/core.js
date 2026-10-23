@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-23.4';
+  W.APP_VERSION = '2026-10-23.5';
   const DB_KEY = 'wn.db.v1';
   W.DB_VERSION = 2;
 
@@ -202,6 +202,9 @@
   W.saleReturned = s => W.round(W.retMap()[s.id] || 0);
   W.saleNet = s => Math.max(0, W.round(s.total - W.saleReturned(s)));
   W.saleDebt = s => s.stage === 'cancelled' ? 0 : Math.max(0, W.round(W.saleNet(s) - W.salePaid(s)));
+  // «Долги по отгрузке» (ТЗ, уточнено заказчиком): клиент уже оплатил, а товар ещё не отгружен —
+  // на эту сумму мы должны отгрузить товар
+  W.shipDebt = s => (s.shipped || s.stage === 'cancelled') ? 0 : Math.min(W.salePaid(s), W.saleNet(s));
   W.payStatus = s => {
     if (s.stage === 'cancelled') return 'cancelled';
     const paid = W.salePaid(s), net = W.saleNet(s);
@@ -230,6 +233,7 @@
       month: monSum, monthCount: monS.length, avg: monS.length ? monSum / monS.length : 0,
       card: W.sum(pays.filter(p => p.method === 'card' || p.method === 'corp'), p => p.amount),
       debt: W.sum(act, s => W.saleDebt(s)), debtCount: act.filter(s => W.saleDebt(s) > 0).length,
+      shipDebt: W.sum(act, s => W.shipDebt(s)), shipDebtCount: act.filter(s => W.shipDebt(s) > 0).length,
     };
   });
 

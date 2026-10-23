@@ -38,7 +38,7 @@
     if (id === 'bank' && W.allow('bank.confirm')) { const n = W.db.bank.filter(b => b.status === 'pending').length; return n ? { n } : null; }
     if (id === 'warehouse') { const n = W.db.sales.filter(s => ['new', 'picking', 'ready', 'shipping'].includes(s.stage) && s.source === 'phone').length; return n ? { n, soft: true } : null; }
     if (id === 'catalog' || id === 'production') { const n = W.lowProducts().length; return n ? { n } : null; }
-    if (id === 'sales') { const n = W.salesStats().debtCount; return n ? { n, soft: true } : null; }
+    if (id === 'sales') { const n = W.salesStats().shipDebtCount; return n ? { n } : null; }
     return null;
   };
 
@@ -51,6 +51,10 @@
       out.push({ ic: 'alert', cls: s <= 0 ? 'bad' : 'warn', title: s <= 0 ? t('Нет в наличии: {n}', { n: p.name }) : t('Мало на складе: {n}', { n: p.name }), sub: t('Остаток {a} шт · порог {b}', { a: W.qty(s), b: W.minStock(p) }), go: [W.can('production') ? 'production' : 'catalog', W.can('production') ? { tab: 'nomen' } : {}] });
     });
     if (W.can('production') || W.can('income')) W.lowMaterials().slice(0, 5).forEach(r => out.push({ ic: 'flask', cls: r.status === 'short' ? 'bad' : 'warn', title: t('Сырьё: {n}', { n: r.m.name }), sub: t('Остаток {a} {u} · к закупке {b} {u}', { a: W.qty(r.stock), b: W.qty(r.toBuy), u: t(r.m.unit) }), go: [W.can('production') ? 'production' : 'income', W.can('production') ? { tab: 'stock' } : {}] }));
+    if (W.can('warehouse') || W.can('sales')) {
+      const st = W.salesStats();
+      if (st.shipDebtCount) out.push({ ic: 'alert', cls: 'warn', title: t('Оплачено, ждут отгрузки: {n}', { n: st.shipDebtCount }), sub: W.money(st.shipDebt), go: W.can('sales') ? ['sales', { tab: 'debts' }] : ['warehouse', { tab: 'ship' }] });
+    }
     if (W.can('warehouse')) { const n = W.db.sales.filter(s => ['new', 'picking', 'ready'].includes(s.stage) && s.source === 'phone').length; if (n) out.push({ ic: 'truck', cls: 'info', title: t('Заказы к отгрузке: {n}', { n }), sub: t('Склад → Отгрузки'), go: ['warehouse', { tab: 'ship' }] }); }
     return out;
   };
