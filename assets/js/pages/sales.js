@@ -168,6 +168,7 @@
       ${s.stage === 'cancelled' ? W.badge(t('Заказ отменён'), 'bad') : `<div class="stepper">${W.STAGES.map((st, i) => `<div class="step ${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="st-dot">${i < cur ? I('check') : i + 1}</div>${t(st.name)}</div>`).join('')}</div>`}</div>`;
     const html = `
       <div class="row" style="gap:8px;margin-bottom:14px">${W.payBadge(s)} ${W.stageBadge(s)} <span class="tag">${t(W.CHANNELS[s.channel])}</span> <span class="tag">${s.source === 'phone' ? t('Заказ по телефону') : t('Продажа на месте')}</span></div>
+      <div class="mob-only row nw" style="gap:8px;margin-bottom:14px"><button class="btn sm" style="flex:1" data-m="waybill">${I('file')}${t('Накладная')}</button><button class="btn sm" style="flex:1" data-m="invoice">${I('receipt')}${t('Счёт-фактура')}</button></div>
       ${stepper}
       <div class="grid g-2" style="margin-bottom:14px">
         <div class="card card-pad" style="box-shadow:none"><div class="label">${t('Покупатель')}</div>

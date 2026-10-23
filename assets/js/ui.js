@@ -387,6 +387,7 @@
   W.periodRange = p => {
     const td = W.today(), d = new Date();
     if (p === 'today') return [td, td];
+    if (p === 'yesterday') { const y = W.addDays(td, -1); return [y, y]; }
     if (p === 'week') return [W.weekStart(), td];
     if (p === 'month') return [td.slice(0, 8) + '01', td];
     if (p === 'prev') { const s = new Date(d.getFullYear(), d.getMonth() - 1, 1), e = new Date(d.getFullYear(), d.getMonth(), 0); return [W.isoDay(s), W.isoDay(e)]; }
@@ -394,6 +395,99 @@
     if (p === 'year') return [td.slice(0, 4) + '-01-01', td];
     return [null, null];
   };
+
+  /* ---------- фильтр даты: быстрые периоды + свой день или период в календаре ----------
+     Значение: { p: 'today' | 'yesterday' | 'week' | 'month' | 'prev' | 'quarter' | 'year' | 'all' }
+     или { p: 'custom', from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' } (from === to — один день). */
+  const DF = [['today', W.N('Сегодня')], ['yesterday', W.N('Вчера')], ['week', W.N('Эта неделя')], ['month', W.N('Этот месяц')],
+    ['prev', W.N('Прошлый месяц')], ['quarter', W.N('3 месяца')], ['year', W.N('Этот год')], ['all', W.N('Всё время')]];
+  W.dfRange = v => v.p === 'custom' ? [v.from, v.to] : W.periodRange(v.p);
+  const dfDates = (f, to) => {
+    if (!f) return '';
+    const y = d => (d.slice(0, 4) !== W.today().slice(0, 4) ? ' ' + d.slice(0, 4) : '');
+    return f === to ? W.dayShort(f) + y(f) : `${W.dayShort(f)}${f.slice(0, 4) !== to.slice(0, 4) ? y(f) : ''} – ${W.dayShort(to)}${y(to)}`;
+  };
+  W.dfLabel = v => {
+    const [f, to] = W.dfRange(v), pr = DF.find(x => x[0] === v.p);
+    if (!pr) return dfDates(f, to);
+    return v.p === 'all' ? t(pr[1]) : `${t(pr[1])} · ${dfDates(f, to)}`;
+  };
+  W.dateFilter = (v, act) => `<button class="btn df-btn" data-a="${act}" aria-haspopup="dialog">${I('calendar')}<span>${esc(W.dfLabel(v))}</span>${I('chevD', 'ic-sm')}</button>`;
+  let dfEl = null, dfBack = null;
+  W.closeDF = () => { if (dfEl) { dfEl.remove(); dfEl = null; } if (dfBack) { dfBack.remove(); dfBack = null; } };
+  W.openDateFilter = (anchor, v, onApply) => {
+    if (dfEl && dfEl._anchor === anchor) return W.closeDF(); // повторный клик по кнопке — закрыть
+    W.closeDF(); W.closeCal();
+    let [from, to] = W.dfRange(v);
+    if (!from) { from = to = null; }
+    const base = W.parse(to || W.today());
+    let view = new Date(base.getFullYear(), base.getMonth(), 1), picking = false, hover = null;
+    const el = document.createElement('div');
+    el.className = 'dfp';
+    el.setAttribute('role', 'dialog');
+    const sel = () => { const a = picking && hover ? [from, hover].sort() : [from, to]; return a; };
+    const days = () => {
+      const y = view.getFullYear(), m = view.getMonth(), [a, b] = sel(), today = W.today();
+      const start = new Date(y, m, 1 - (new Date(y, m, 1).getDay() + 6) % 7);
+      let html = '';
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i), iso = W.isoDay(d);
+        const c = [d.getMonth() !== m ? 'out' : '', iso === today ? 'today' : '', a && iso === a ? 'start' : '', b && iso === b ? 'end' : '', a && b && iso > a && iso < b ? 'in' : ''].join(' ');
+        html += `<button type="button" data-day="${iso}" class="${c}">${d.getDate()}</button>`;
+      }
+      return html;
+    };
+    const draw = () => {
+      const [a, b] = sel();
+      el.innerHTML = `<div class="dfp-presets">${DF.map(([k, n]) => `<button type="button" data-p="${k}" class="${v.p === k ? 'on' : ''}">${t(n)}</button>`).join('')}</div>
+        <div class="dfp-cal"><div class="cal-head"><b class="cal-title" style="cursor:default">${t(W.MONTHS[view.getMonth()])} ${view.getFullYear()}</b><span class="spacer"></span>
+          <button type="button" class="cal-nav" data-x="prev" aria-label="←">${I('chevL', 'ic-sm')}</button><button type="button" class="cal-nav" data-x="next" aria-label="→">${I('chevR', 'ic-sm')}</button></div>
+          <div class="cal-wd">${WD.map(w => `<span>${t(w)}</span>`).join('')}</div><div class="cal-days">${days()}</div>
+          <div class="dfp-hint">${picking ? t('Выберите последний день периода') : t('Нажмите на день — или на два дня, чтобы выбрать период')}</div>
+          <div class="dfp-foot"><span class="dfp-sel">${a ? esc(dfDates(a, b || a)) : ''}</span><button type="button" class="btn sm" data-x="cancel">${t('Отмена')}</button><button type="button" class="btn sm primary" data-x="apply" ${a ? '' : 'disabled'}>${t('Применить')}</button></div></div>`;
+    };
+    draw();
+    const mobile = innerWidth <= 720;
+    if (mobile) { dfBack = document.createElement('div'); dfBack.className = 'dfp-back'; document.body.appendChild(dfBack); dfBack.addEventListener('click', W.closeDF); }
+    document.body.appendChild(el);
+    if (!mobile) {
+      const r = anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      let top = r.bottom + 8;
+      if (top + h > innerHeight - 8) top = Math.max(8, innerHeight - h - 8);
+      el.style.top = top + 'px';
+      el.style.left = W.clamp(r.right - w, 8, innerWidth - w - 8) + 'px';
+    }
+    el.addEventListener('mousedown', e => e.preventDefault());
+    el.addEventListener('mouseover', e => {
+      const d = e.target.closest('[data-day]');
+      if (!picking || !d || d.dataset.day === hover) return;
+      hover = d.dataset.day;
+      el.querySelector('.cal-days').innerHTML = days();
+    });
+    el.addEventListener('click', e => {
+      e.stopPropagation(); // после перерисовки кнопка уже не в DOM
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.p) { W.closeDF(); return onApply({ p: b.dataset.p }); }
+      if (b.dataset.day) {
+        const d = b.dataset.day;
+        if (!picking) { from = to = d; picking = true; hover = d; }
+        else { [from, to] = [from, d].sort(); picking = false; hover = null; }
+        return draw();
+      }
+      const x = b.dataset.x;
+      if (x === 'prev') view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+      if (x === 'next') view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+      if (x === 'cancel') return W.closeDF();
+      if (x === 'apply' && from) { W.closeDF(); return onApply({ p: 'custom', from, to: to || from }); }
+      draw();
+    });
+    el._t = Date.now(); el._anchor = anchor;
+    dfEl = el;
+  };
+  document.addEventListener('click', e => { if (dfEl && !dfEl.contains(e.target) && !e.target.closest('.df-btn')) W.closeDF(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && dfEl) { W.closeDF(); e.stopPropagation(); } }, true);
+  addEventListener('resize', () => W.closeDF());
+  addEventListener('scroll', e => { if (dfEl && innerWidth > 720 && !dfEl.contains(e.target) && Date.now() - dfEl._t > 250) W.closeDF(); }, true);
 
   /* ---------- таблица (на телефоне — карточки) ---------- */
   // cols: { label, cls, r, title, aside, w, render(row) }
@@ -506,9 +600,18 @@
   };
   const inkRO = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => es.forEach(e => inkOne(e.target))) : null;
   W.placeInk = root => root.querySelectorAll('.tabs').forEach(tb => { inkOne(tb); if (inkRO && !tb._ro) { tb._ro = 1; inkRO.observe(tb); } });
-  W.enhance = root => { W.bindCharts(root); requestAnimationFrame(() => { W.placeInk(root); W.placeLangPill(root); }); };
-  // подмножество шрифта с Қ Ғ Ў Ҳ грузится по требованию — после загрузки ширины вкладок меняются
-  if (document.fonts) document.fonts.addEventListener('loadingdone', () => { W.placeInk(document); W.placeLangPill(document); });
+  /* число в карточке показателя: уменьшаем шрифт, пока не влезет в ширину карточки */
+  W.fitText = root => root.querySelectorAll('.kpi-val').forEach(el => {
+    el.style.fontSize = '';
+    if (!el.clientWidth) return; // скрыто — пересчитаем, когда появится
+    let fs = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 12) { fs -= 1; el.style.fontSize = fs + 'px'; }
+  });
+  W.enhance = root => { W.bindCharts(root); W.fitText(root); requestAnimationFrame(() => { W.placeInk(root); W.placeLangPill(root); W.fitText(root); }); };
+  // подмножество шрифта с Қ Ғ Ў Ҳ грузится по требованию — после загрузки ширины меняются
+  if (document.fonts) document.fonts.addEventListener('loadingdone', () => { W.placeInk(document); W.placeLangPill(document); W.fitText(document); });
+  let fitT = null;
+  addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => W.fitText(document), 120); });
 
   /* ---------- изображение товара: фото или фирменная «банка/ведро» ---------- */
   const shade = (hex, k) => {

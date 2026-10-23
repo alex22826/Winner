@@ -382,8 +382,9 @@ img { max-width: 100%; display: block; }
 .kpi-ic.c-bad { background: var(--bad-bg); color: var(--bad); }
 .kpi-ic.c-vio { background: var(--vio-bg); color: var(--vio); }
 .kpi-label { font-size: 13px; color: var(--text-2); font-weight: 500; line-height: 1.3; min-width: 0; }
-.kpi-val { font-family: var(--font-d); font-size: 25px; font-weight: 700; letter-spacing: -.02em; margin-top: 12px; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
-.kpi-val small { font-size: 14px; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; white-space: nowrap; display: inline-block; }
+/* число не переносится никогда — если не влезает, W.fitText уменьшает шрифт */
+.kpi-val { font-family: var(--font-d); font-size: 25px; font-weight: 700; letter-spacing: -.02em; margin-top: 12px; line-height: 1.15; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.kpi-val small { font-size: .56em; font-weight: 600; color: var(--muted); margin-left: .2em; letter-spacing: 0; }
 .kpis.k5 .kpi-val { font-size: 22px; }
 .kpi-foot { margin-top: 6px; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 18px; }
 .kpi.hero {
@@ -671,6 +672,26 @@ input[type=date].inp:read-only { color: var(--text); }
 .cal-foot button { border: 0; background: none; color: var(--brand-ink); font-weight: 650; font-size: 13px; padding: 7px 10px; border-radius: 9px; }
 .cal-foot button:hover { background: var(--brand-soft); }
 
+/* фильтр даты: быстрые периоды слева, календарь периода справа */
+.df-btn span { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.df-btn .ic-sm { color: var(--muted); }
+.dfp { position: fixed; z-index: 96; display: grid; grid-template-columns: 172px 312px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--sh-3); overflow: hidden; animation: popIn .2s var(--ease) both; user-select: none; }
+.dfp-presets { display: flex; flex-direction: column; gap: 2px; padding: 10px; background: var(--surface-2); border-right: 1px solid var(--line); }
+.dfp-presets button { border: 0; background: none; text-align: left; padding: 9px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.dfp-presets button:hover { background: var(--surface-3); color: var(--text); }
+.dfp-presets button.on { background: var(--brand-soft); color: var(--brand-ink); }
+.dfp-cal { padding: 12px 14px 14px; min-width: 0; }
+.dfp .cal-days { gap: 3px 0; }
+.dfp .cal-days button { border-radius: 10px; }
+.dfp .cal-days button.in { background: var(--brand-soft); color: var(--brand-ink); border-radius: 0; }
+.dfp .cal-days button.start, .dfp .cal-days button.end { background: var(--brand); color: #fff; box-shadow: none; }
+.dfp .cal-days button.start:not(.end) { border-radius: 10px 0 0 10px; }
+.dfp .cal-days button.end:not(.start) { border-radius: 0 10px 10px 0; }
+.dfp-hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; }
+.dfp-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.dfp-sel { flex: 1; min-width: 0; font-weight: 650; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dfp-back { position: fixed; inset: 0; z-index: 95; background: rgba(8,11,24,.5); animation: fadeIn .2s ease both; }
+
 /* смена вкладок и режимов внутри раздела */
 .tab-in { animation: tabIn .32s var(--ease) both; }
 .tab-in-r { animation: tabInR .36s var(--ease) both; }
@@ -882,6 +903,7 @@ html.vt-theme::view-transition-new(root) { animation: themeIn .35s ease both; mi
 
 /* нижняя навигация (телефон) */
 .bnav { display: none; }
+.mob-only { display: none !important; }
 .scrim { display: none; }
 
 /* =========================================================================
@@ -941,8 +963,8 @@ html.vt-theme::view-transition-new(root) { animation: themeIn .35s ease both; mi
   .kpi { padding: 13px 13px 12px; border-radius: 16px; }
   .kpi-ic { width: 32px; height: 32px; border-radius: 10px; }
   .kpi-label { font-size: 12.5px; }
-  .kpi-val { font-size: 19px; margin-top: 10px; }
-  .kpi-val small { font-size: 12px; }
+  .kpi-val { font-size: 20px; margin-top: 10px; }
+  .kpi-val small { font-size: .6em; }
   .kpi.hero { grid-column: 1 / -1; }
   .kpi.hero .kpi-val { font-size: 26px; }
   .g-2, .g-3, .g-4, .g-5, .g-side { grid-template-columns: minmax(0, 1fr); }
@@ -956,6 +978,18 @@ html.vt-theme::view-transition-new(root) { animation: themeIn .35s ease both; mi
   .filters { width: 100%; }
   .filters .inp, .filters .seg { flex: 1 1 calc(50% - 4px); min-width: 0; }
   .tabs { margin-left: -14px; margin-right: -14px; padding: 0 10px; margin-bottom: 16px; }
+  /* шрифт полей не меньше 16px — иначе iPhone увеличивает страницу при вводе */
+  .inp, .inp.sm, textarea.inp { font-size: 16px; }
+  .inp { height: 46px; }
+  .inp.sm { height: 42px; }
+  /* кнопки под палец: не ниже 38–40px */
+  .btn { height: 44px; }
+  .btn.sm { height: 38px; padding: 0 13px; font-size: 13.5px; }
+  .btn.sm.icon { width: 38px; }
+  .seg button { height: 38px; padding: 0 14px; }
+  .chip-pick span { height: 38px; }
+  .cat-chip { height: 40px; }
+  .act button { width: 38px; height: 38px; }
   .tab { padding: 12px 10px 13px; font-size: 14px; }
   .set-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
 
@@ -968,7 +1002,9 @@ html.vt-theme::view-transition-new(root) { animation: themeIn .35s ease both; mi
   .tbl.stack td::before { content: attr(data-label); color: var(--muted); font-size: 12.5px; font-weight: 500; text-align: left; flex: none; max-width: 48%; }
   .tbl.stack td.cell-title { grid-column: 1 / 2; display: block; text-align: left; font-size: 15px; padding-bottom: 6px !important; }
   .tbl.stack td.cell-title::before { display: none; }
-  .tbl.stack td.cell-title + td.cell-aside { grid-column: 2 / 3; grid-row: 1; align-self: start; padding-bottom: 6px !important; }
+  .tbl.stack td.cell-title + td.cell-aside { grid-column: 2 / 3; align-self: start; padding-bottom: 6px !important; }
+  .tbl.stack td.no-label:first-child { justify-content: flex-start; padding-bottom: 6px !important; }
+  .tbl.stack td.no-label:first-child input[type=checkbox] { width: 20px; height: 20px; }
   .tbl.stack td.cell-aside::before { display: none; }
   .tbl.stack td.w-act { justify-content: flex-end; padding-top: 8px !important; margin-top: 4px; border-top: 1px dashed var(--line); }
   .tbl.stack td.w-act::before { display: none; }
@@ -995,8 +1031,11 @@ html.vt-theme::view-transition-new(root) { animation: themeIn .35s ease both; mi
   .modal-head { padding: 14px 18px 10px; }
   .modal-body { padding: 4px 18px 18px; }
   .modal-foot { padding: 12px 18px calc(12px + var(--safe-b)); }
-  .modal-foot .btn { flex: 1 1 auto; }
+  /* кнопки окна — по две в ряд, длинная подпись переносится, а не раздувает панель */
+  .modal-foot .btn { flex: 1 1 calc(50% - 5px); min-width: 0; white-space: normal; height: auto; min-height: 44px; padding: 8px 12px; line-height: 1.2; }
   .modal-foot .left { margin-right: 0; width: 100%; }
+  .drawer .modal-foot .left { display: none; }
+  .mob-only { display: flex !important; }
   .drawer { width: 100%; height: 94vh; height: 94dvh; margin-top: auto; border-radius: 24px 24px 0 0; animation: sheetIn .34s var(--ease) both; border-left: 0; }
   .overlay.closing .drawer { animation: sheetOut .2s ease both; }
   .cmdk { margin-top: auto; }
@@ -1034,6 +1073,17 @@ html.vt-theme::view-transition-new(root) { animation: themeIn .35s ease both; mi
   .bnav button .ic { width: 22px; height: 22px; }
   .bnav button.on { color: #fff; background: linear-gradient(180deg, rgba(100,116,255,.35), rgba(100,116,255,.15)); }
   .bnav button .b-dot { position: absolute; top: 6px; right: calc(50% - 18px); width: 8px; height: 8px; border-radius: 50%; background: var(--c-magenta); }
+}
+/* фильтр даты на телефоне — шторка снизу, периоды лентой над календарём */
+@media (max-width: 720px) {
+  .dfp { left: 8px; right: 8px; bottom: calc(8px + var(--safe-b)); grid-template-columns: minmax(0, 1fr); border-radius: 24px; animation: sheetIn .3s var(--ease) both; }
+  .dfp-presets { flex-direction: row; overflow-x: auto; scrollbar-width: none; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px; }
+  .dfp-presets::-webkit-scrollbar { display: none; }
+  .dfp-presets button { flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; padding: 8px 13px; }
+  .dfp .cal-days button { height: 42px; font-size: 15px; }
+  .dfp-foot .btn { height: 42px; padding: 0 18px; }
+  .df-btn { width: 100%; justify-content: flex-start; }
+  .df-btn span { flex: 1; max-width: none; text-align: left; }
 }
 @media (max-width: 380px) {
   .kpi-val { font-size: 17px; }

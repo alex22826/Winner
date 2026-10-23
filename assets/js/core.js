@@ -4,9 +4,9 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-23.1';
+  W.APP_VERSION = '2026-10-23.2';
   const DB_KEY = 'wn.db.v1';
-  W.DB_VERSION = 1;
+  W.DB_VERSION = 2;
 
   /* ---------- утилиты ---------- */
   W.uid = (p = '') => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
