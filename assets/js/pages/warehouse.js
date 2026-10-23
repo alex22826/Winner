@@ -66,53 +66,8 @@
     ], rows: pg.rows, empty: W.empty(t('Движений за период нет'), '', 'swap') })}${W.moreBtn(pg.more, pg.total, pg.rows.length)}</div>`;
   };
 
-  /* ---------- перемещения ---------- */
-  const tabTransfer = () => {
-    const can = W.allow('stock.move');
-    const sugg = W.db.products.filter(p => !p.archived).map(p => ({ p, shop: W.stock('p', p.id, 'shop'), main: W.stock('p', p.id, 'main'), need: p.pack === 'bucket' ? 4 : 10 })).filter(r => r.shop < r.need && r.main > 0).sort((a, b) => a.shop - b.shop);
-    const hist = []; const seen = new Set();
-    W.db.moves.slice().reverse().forEach(m => { if (m.kind !== 'transfer' || seen.has(m.ref) || m.qty > 0) return; seen.add(m.ref); const to = W.db.moves.find(x => x.ref === m.ref && x.qty > 0); hist.push({ m, to }); });
-    return `<div class="grid g-main" style="align-items:start">
-      <div class="card"><div class="card-head"><div><h3>${t('Загрузить магазин')}</h3><div class="sub">${t('Товары, которых в магазине меньше нормы, а на основном складе есть')}</div></div>
-        ${can && sugg.length ? `<div class="right"><button class="btn sm primary" data-a="fillAll">${I('truck')}${t('Пополнить всё')}</button></div>` : ''}</div>
-        <div class="card-body flush">${W.table({ cols: [
-          { label: t('Товар'), title: true, render: r => `<div class="cell-flex"><div class="thumb">${W.productArt(r.p)}</div><div class="cell-main" style="min-width:0">${esc(r.p.name)}</div></div>` },
-          { label: t('В магазине'), r: true, aside: true, render: r => `<b style="color:${r.shop <= 0 ? 'var(--bad)' : 'var(--warn)'}">${W.qty(r.shop)}</b>` },
-          { label: t('На основном складе'), r: true, render: r => W.qty(r.main) },
-          { label: t('Предлагаем'), r: true, render: r => `${W.qty(Math.min(r.main, r.need * 2 - r.shop))} ${t('шт')}` },
-          { label: '', cls: 'w-act', render: r => can ? `<div class="act"><button class="go" data-a="fill" data-id="${r.p.id}" data-q="${Math.min(r.main, r.need * 2 - r.shop)}" title="${t('Переместить')}">${I('truck')}</button></div>` : '' },
-        ], rows: sugg, empty: W.empty(t('Магазин укомплектован'), t('Все позиции в норме'), 'checkCircle') })}</div></div>
-      <div class="card"><div class="card-head"><h3>${t('Последние перемещения')}</h3>${can ? `<div class="right"><button class="btn sm" data-a="move">${I('swap')}${t('Переместить')}</button></div>` : ''}</div>
-        <div class="card-body">${hist.slice(0, 12).map(h => `<div class="list-row"><div class="lr-main"><b>${esc(itemName(h.m))}</b><span>${W.fmtDT(h.m.at)} · ${t(W.WH[h.m.wh])} → ${h.to ? t(W.WH[h.to.wh]) : '—'}</span></div><b class="nowrap">${W.qty(-h.m.qty)} ${t('шт')}</b></div>`).join('') || `<div class="muted">${t('Перемещений пока не было')}</div>`}</div></div></div>`;
-  };
 
-  const moveForm = (pid, qty, from = 'main', to = 'shop') => {
-    const whOpts = ['prod', 'main', 'shop'].map(w => [w, t(W.WH[w])]);
-    W.modal({
-      size: 'sm', title: t('Перемещение товара'), sub: t('Между складом производства, основным складом и магазином'), icon: 'swap',
-      body: `<div class="form-grid" style="grid-template-columns:1fr">
-        ${W.fs({ name: 'p', label: t('Товар'), options: W.db.products.filter(p => !p.archived).map(p => [p.id, p.name]), value: pid || '' })}
-        <div class="form-grid">${W.fs({ name: 'from', label: t('Откуда'), options: whOpts, value: from })}${W.fs({ name: 'to', label: t('Куда'), options: whOpts, value: to })}</div>
-        ${W.fi({ name: 'qty', label: t('Количество, шт'), type: 'number', value: qty || 1, attrs: 'min="1"', req: true })}
-        <div class="hint av"></div></div>`,
-      foot: `<button class="btn" data-m="close">${t('Отмена')}</button><button class="btn primary" data-m="save">${I('swap')}${t('Переместить')}</button>`,
-      onMount: el => upd(el),
-      actions: {
-        change: (e, m) => upd(m.el),
-        save: (b, m) => {
-          const d = W.form(m.el);
-          if (d.from === d.to) return W.toast(t('Выберите разные склады'), 'warn');
-          const have = W.stock('p', d.p, d.from);
-          if (!(d.qty > 0)) return W.toast(t('Укажите количество'), 'warn');
-          if (d.qty > have) return W.toast(t('На складе «{w}» только {n} шт', { w: t(W.WH[d.from]), n: W.qty(have) }), 'warn');
-          W.transfer({ p: d.p, from: d.from, to: d.to, qty: d.qty }); W.save(); m.close(); W.toast(t('Перемещено {n} шт', { n: W.qty(d.qty) }));
-        },
-      },
-    });
-    function upd(el) { const d = W.form(el); el.querySelector('.av').textContent = t('Доступно на складе «{w}»: {n} шт', { w: t(W.WH[d.from]), n: W.qty(W.stock('p', d.p, d.from)) }); }
-  };
-
-  const TABS = { stock: tabStock, ship: tabShip, moves: tabMoves, transfer: tabTransfer };
+  const TABS = { stock: tabStock, ship: tabShip, moves: tabMoves };
   W.page('warehouse', {
     render(params) {
       const S = st(), tab = TABS[params.tab] ? params.tab : 'stock';
@@ -120,19 +75,18 @@
       const value = W.sum(prods, p => Math.max(0, W.stock('p', p.id)) * p.price);
       const toShip = W.db.sales.filter(s => s.source === 'phone' && W.OPEN_STAGES.includes(s.stage)).length;
       const inWay = W.db.sales.filter(s => s.stage === 'shipping').length;
-      const whOpts = [['', t('Все склады')], ...Object.entries(W.WH).filter(([k]) => S.kind === 'm' ? k === 'raw' : k !== 'raw').map(([k, v]) => [k, t(v)])];
       const tb = tab === 'stock' || tab === 'moves';
-      return `<div class="page-head"><div><h1>${t('Склад')}</h1><div class="sub">${t('Приход, расход и остатки, отгрузки заказов и перемещения')}</div></div>
-        <div class="actions">${W.allow('stock.move') ? `<button class="btn" data-a="move">${I('swap')}${t('Перемещение')}</button>` : ''}${W.can('income') ? `<button class="btn primary" data-go="income">${I('box')}${t('Приход')}</button>` : ''}</div></div>
+      return `<div class="page-head"><div><h1>${t('Склад')}</h1><div class="sub">${t('Готовая продукция на складе: приход, расход, остатки и отгрузки заказов')}</div></div>
+        <div class="actions">${W.can('income') ? `<button class="btn primary" data-go="income">${I('box')}${t('Приход')}</button>` : ''}</div></div>
         <div class="kpis">
           ${W.kpi({ label: t('Позиций в наличии'), value: prods.filter(p => W.stock('p', p.id) > 0).length, small: '/ ' + prods.length, icon: 'grid' })}
           ${W.kpi({ label: t('Стоимость остатков'), value: W.moneyKpi(value), icon: 'coins', c: 'c-ok', foot: t('готовая продукция по ценам продажи') })}
           ${W.kpi({ label: t('Заказов к отгрузке'), value: toShip, icon: 'truck', c: 'c-vio', link: 'warehouse?tab=ship', foot: t('в пути: {n}', { n: inWay }) })}
           ${W.kpi({ label: t('Мало на складе'), value: W.lowProducts().length, icon: 'alert', c: 'c-bad', foot: t('позиций ниже порога') })}
         </div>
-        ${W.tabs([{ id: 'stock', label: t('Остатки'), icon: 'layers' }, { id: 'ship', label: t('Отгрузки'), icon: 'truck', cnt: toShip || null }, { id: 'moves', label: t('Движение'), icon: 'swap' }, { id: 'transfer', label: t('Перемещения'), icon: 'warehouse' }], tab)}
-        ${tb ? `<div class="toolbar">${W.seg([{ id: 'p', label: t('Готовая продукция') }, { id: 'm', label: t('Сырьё') }], S.kind, 'kind')}${W.searchBox(S.q, 'q', t('Наименование'))}
-          <div class="filters"><select class="inp" data-on="wh">${W.opts(whOpts, S.wh)}</select><select class="inp" data-on="period">${W.opts(W.periodOpts(), S.period)}</select>
+        ${W.tabs([{ id: 'stock', label: t('Остатки'), icon: 'layers' }, { id: 'ship', label: t('Отгрузки'), icon: 'truck', cnt: toShip || null }, { id: 'moves', label: t('Движение'), icon: 'swap' }], tab)}
+        ${tb ? `<div class="toolbar">${W.seg([{ id: 'p', label: t('Готовая продукция · склад') }, { id: 'm', label: t('Сырьё · производство') }], S.kind, 'kind')}${W.searchBox(S.q, 'q', t('Наименование'))}
+          <div class="filters"><select class="inp" data-on="period">${W.opts(W.periodOpts(), S.period)}</select>
           ${tab === 'moves' ? `<select class="inp" data-on="mkind">${W.opts([['', t('Все операции')], ...Object.entries(MK).map(([k, v]) => [k, t(v)])], S.mkind)}</select>` : ''}</div>
           <button class="btn" data-a="csv">${I('download')}${t('Скачать')}</button></div>` : ''}
         ${tab === 'ship' ? `<div class="hint mb-16">${t('Заказы по телефону проходят стадии: новый → сборка → готов к отгрузке → в пути → доставлен. Остаток списывается, когда заказ уходит в путь.')}</div>` : ''}
@@ -141,7 +95,6 @@
     actions: {
       tab: el => { st().page = 1; W.setParams({ tab: el.dataset.v }); },
       kind: el => { const S = st(); S.kind = el.dataset.v; S.wh = ''; S.page = 1; W.swap(); },
-      wh: el => { st().wh = el.value; W.region('tab', TABS[W.cur.params.tab || 'stock']()); },
       period: el => { st().period = el.value; W.region('tab', TABS[W.cur.params.tab || 'stock']()); },
       mkind: el => { st().mkind = el.value; W.region('tab', tabMoves()); },
       q: el => { st().q = el.value; W.region('tab', TABS[W.cur.params.tab || 'stock']()); },
@@ -154,14 +107,6 @@
         const r = W.setStage(s, nx.id);
         if (r !== true) return W.toast(t('Нельзя отгрузить без остатка: {n}', { n: r.block.map(x => x.p.name).join(', ') }), 'err');
         W.save(); W.toast(t('Заказ №{n}: {s}', { n: W.no(s.no), s: t(nx.name) }));
-      },
-      move: () => moveForm(),
-      fill: el => moveForm(el.dataset.id, +el.dataset.q),
-      fillAll: async () => {
-        const list = W.db.products.filter(p => !p.archived).map(p => ({ p, shop: W.stock('p', p.id, 'shop'), main: W.stock('p', p.id, 'main'), need: p.pack === 'bucket' ? 4 : 10 })).filter(r => r.shop < r.need && r.main > 0);
-        if (!await W.confirm({ title: t('Пополнить магазин?'), text: t('Будет перемещено {n} позиций с основного склада в магазин.', { n: list.length }), ok: t('Переместить'), danger: false, icon: 'truck' })) return;
-        list.forEach(r => W.transfer({ p: r.p.id, from: 'main', to: 'shop', qty: Math.min(r.main, r.need * 2 - r.shop), note: t('Загрузка магазина') }));
-        W.save(); W.toast(t('Магазин пополнен: {n} позиций', { n: list.length }));
       },
       csv: () => {
         const S = st(), [from, to] = W.periodRange(S.period);

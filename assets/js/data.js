@@ -28,6 +28,7 @@
       currency: 'UZS', usdRate: 12780,
       numbering: { sale: 1001, waybill: 1, invoice: 1, prod: 1, purchase: 1, ret: 1 },
       lowStock: 10,
+      vat: 12, // ставка НДС для счёт-фактуры, %; 0 — без НДС
       expenseCats: [N('Аренда'), N('Коммунальные услуги'), N('Транспорт и логистика'), N('Хозяйственные расходы'), N('Ремонт оборудования'), N('Налоги и сборы'), N('Реклама и маркетинг'), N('Связь и интернет'), N('Прочее')],
     };
 
@@ -130,11 +131,12 @@
     const a0 = `${W.addDays(today, -10)}T08:00`;
     const start = N('Остаток на начало');
     materials.forEach(m => mv('m', m.id, 'raw', m.stock, 'init', null, a0, 'u_skl', start));
-    const stock = { // склад производства, основной склад, магазин
+    const stock = { // было: склад производства, основной склад, магазин — теперь всё на одном складе
       p1: [40, 120, 18], p2: [0, 6, 2], p3: [6, 12, 0], p4: [0, 0, 0], p5: [20, 64, 14],
       p6: [0, 45, 9], p7: [0, 5, 0], p8: [8, 22, 0], p9: [30, 10, 0], p10: [0, 60, 40],
     };
-    Object.entries(stock).forEach(([p, q]) => ['prod', 'main', 'shop'].forEach((wh, i) => { if (q[i]) mv('p', p, wh, q[i], 'init', null, a0, 'u_skl', start); }));
+    // склад готовой продукции один — остатки из трёх бывших точек складываются
+    Object.entries(stock).forEach(([p, q]) => { const n = q[0] + q[1] + q[2]; if (n) mv('p', p, 'main', n, 'init', null, a0, 'u_skl', start); });
     cash('cash', 1, 15000000, a0, 'manual', null, start, 'u_buh');
     cash('card', 1, 2000000, a0, 'manual', null, start, 'u_buh');
     cash('corp', 1, 5000000, a0, 'manual', null, start, 'u_buh');
@@ -150,7 +152,7 @@
       db.sales.push(s);
       return s;
     };
-    const ship = (s, a) => { s.items.forEach(i => mv('p', i.p, s.channel, -i.qty, 'sale', s.id, a, 'u_skl')); s.shipped = true; s.shippedAt = a; };
+    const ship = (s, a) => { s.items.forEach(i => mv('p', i.p, 'main', -i.qty, 'sale', s.id, a, 'u_skl')); s.shipped = true; s.shippedAt = a; };
     const pay = (s, method, amount, a, by, confirmed) => {
       db.payments.push({ id: id('pay'), at: a, sale: s.id, method, amount, by });
       money(method, 1, amount, a, 'sale', s.id, `Оплата по продаже №${W.no(s.no)}`, s.cust ? customers.find(c => c.id === s.cust).name : 'Розничный покупатель', W.no(s.no), by, confirmed);

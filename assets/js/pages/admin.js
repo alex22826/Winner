@@ -123,7 +123,7 @@
   /* ---------- страница ---------- */
   let draft = null;
   const dirty = () => draft && JSON.stringify(draft) !== JSON.stringify(pickSettings());
-  const pickSettings = () => { const s = W.db.settings; return { company: Object.assign({}, s.company), currency: s.currency, usdRate: s.usdRate, numbering: Object.assign({}, s.numbering), lowStock: s.lowStock }; };
+  const pickSettings = () => { const s = W.db.settings; return { company: Object.assign({}, s.company), currency: s.currency, usdRate: s.usdRate, numbering: Object.assign({}, s.numbering), lowStock: s.lowStock, vat: s.vat ?? 12 }; };
   const savebar = () => dirty() ? `<div class="savebar">${I('alert')}<span style="flex:1">${t('Есть несохранённые изменения')}</span><button class="btn sm ghost" style="color:#fff" data-a="undo">${t('Отменить')}</button><button class="btn sm primary" data-a="save">${I('check')}${t('Сохранить')}</button></div>` : '';
 
   W.page('admin', {
@@ -136,11 +136,12 @@
           <div class="set-row"><div><h4>${t('Реквизиты компании')}</h4><p>${t('Отображаются в накладных, счетах-фактурах и отчётах')}</p></div>
             <div class="form-grid">${f('name', t('Название организации'), { cls: 'full' })}${f('inn', t('ИНН'))}${f('director', t('Директор'))}${f('phone', t('Телефон'), { type: 'tel' })}${f('email', 'E-mail', { type: 'email' })}${f('address', t('Адрес'), { cls: 'full' })}
               ${f('bank', t('Банк'))}${f('mfo', t('МФО'))}${f('account', t('Расчётный счёт'), { cls: 'full' })}</div></div>
-          <div class="set-row"><div><h4>${t('Параметры учёта')}</h4><p>${t('Валюта, курс и порог «заканчивается на складе»')}</p></div>
+          <div class="set-row"><div><h4>${t('Параметры учёта')}</h4><p>${t('Валюта, курс, НДС и порог «заканчивается на складе»')}</p></div>
             <div class="form-grid">
               <div class="field"><label>${t('Базовая валюта')}</label><select class="inp" data-on="cur">${W.opts([['UZS', t('Узбекский сум (UZS)')], ['USD', t('Доллар США (USD)')]], draft.currency)}</select></div>
               <div class="field"><label>${t('Курс доллара (по умолчанию)')}</label><div class="inp-wrap has-suffix"><input class="inp num" data-on="rate" data-money inputmode="decimal" value="${W.fmtNum(draft.usdRate, 2)}"><span class="suffix">${t('сум')}</span></div></div>
-              <div class="field"><label>${t('Порог «заканчивается на складе»')}</label><div class="inp-wrap has-suffix"><input class="inp num" data-on="low" inputmode="numeric" value="${draft.lowStock}"><span class="suffix">${t('шт')}</span></div><div class="hint">${t('Для товаров без своего минимального порога')}</div></div></div></div>
+              <div class="field"><label>${t('Порог «заканчивается на складе»')}</label><div class="inp-wrap has-suffix"><input class="inp num" data-on="low" inputmode="numeric" value="${draft.lowStock}"><span class="suffix">${t('шт')}</span></div><div class="hint">${t('Для товаров без своего минимального порога')}</div></div>
+              <div class="field"><label>${t('Ставка НДС')}</label><div class="inp-wrap has-suffix"><input class="inp num" data-on="vat" inputmode="decimal" value="${draft.vat}"><span class="suffix">%</span></div><div class="hint">${t('Для счёт-фактуры; 0 — без НДС')}</div></div></div></div>
           <div class="set-row"><div><h4>${t('Нумерация документов')}</h4><p>${t('Первый новый документ получит стартовый номер, дальше номера идут по возрастанию')}</p></div>
             <div class="form-grid g3">${NUMS.map(([k, n]) => `<div class="field"><label>${t(n)}</label><input class="inp num" data-on="num" data-k="${k}" inputmode="numeric" value="${draft.numbering[k]}"><div class="hint">${t('следующий: №{n}', { n: W.no(nextOf(k, +draft.numbering[k] || 1)) })}</div></div>`).join('')}</div></div>
         </div>
@@ -157,11 +158,12 @@
       cur: el => { draft.currency = el.value; W.region('savebar', savebar()); },
       rate: el => { draft.usdRate = W.parseNum(el.value); W.region('savebar', savebar()); },
       low: el => { draft.lowStock = Math.max(0, Math.round(W.parseNum(el.value))); W.region('savebar', savebar()); },
+      vat: el => { draft.vat = W.clamp(W.parseNum(el.value), 0, 100); W.region('savebar', savebar()); },
       num: el => { draft.numbering[el.dataset.k] = Math.max(1, Math.round(W.parseNum(el.value)) || 1); el.closest('.field').querySelector('.hint').textContent = t('следующий: №{n}', { n: W.no(nextOf(el.dataset.k, draft.numbering[el.dataset.k])) }); W.region('savebar', savebar()); },
       undo: () => { draft = null; W.refresh(); },
       save: () => {
         if (!draft.company.name) return W.toast(t('Укажите название организации'), 'warn');
-        Object.assign(W.db.settings, { company: draft.company, currency: draft.currency, usdRate: draft.usdRate, numbering: draft.numbering, lowStock: draft.lowStock });
+        Object.assign(W.db.settings, { company: draft.company, currency: draft.currency, usdRate: draft.usdRate, numbering: draft.numbering, lowStock: draft.lowStock, vat: draft.vat });
         draft = null; W.save(); W.toast(t('Настройки сохранены'));
       },
       import: () => importDialog(),

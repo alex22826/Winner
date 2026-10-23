@@ -113,23 +113,24 @@
       const rows = W.db.products.filter(p => !p.archived);
       body = `<div class="card">${W.table({ cols: [
         { label: t('Продукция'), title: true, render: p => `<div class="cell-flex"><div class="thumb">${W.productArt(p)}</div><div style="min-width:0"><div class="cell-main">${esc(p.name)}</div><div class="cell-sub">${esc(W.catName(p.cat))}</div></div></div>` },
-        { label: t('Всего'), r: true, aside: true, render: p => { const s = W.stock('p', p.id); return `<b style="color:${s <= W.minStock(p) ? 'var(--bad)' : 'inherit'}">${W.qty(s)}</b> ${t('шт')}`; } },
-        ...['prod', 'main', 'shop'].map(wh => ({ label: t(W.WH[wh]), r: true, render: p => W.qty(W.stock('p', p.id, wh)) })),
+        { label: t('На складе'), r: true, aside: true, render: p => { const s = W.stock('p', p.id); return `<b style="color:${s <= W.minStock(p) ? 'var(--bad)' : 'inherit'}">${W.qty(s)}</b> ${t('шт')}`; } },
+        { label: t('Свободно'), r: true, render: p => W.qty(Math.max(0, W.stock('p', p.id) - W.reserved(p.id))) },
         { label: t('В резерве'), r: true, render: p => { const r = W.reserved(p.id); return r ? `<span class="badge info plain">${W.qty(r)}</span>` : '<span class="muted">—</span>'; } },
         { label: t('Мин. порог'), r: true, render: p => W.minStock(p) },
       ], rows, rowAttr: p => W.stock('p', p.id) <= W.minStock(p) ? 'class="row-warn"' : '' })}</div>`;
     } else {
-      const whs = ['raw', 'prod', 'main', 'shop'];
-      body = `<div class="grid g-4">${whs.map(wh => {
+      // два места хранения: сырьё на производстве и готовая продукция на складе
+      const whs = ['raw', 'main'];
+      body = `<div class="grid g-2">${whs.map(wh => {
         const isRaw = wh === 'raw';
         const items = (isRaw ? W.db.materials : W.db.products).map(x => ({ x, q: W.stock(isRaw ? 'm' : 'p', x.id, wh) })).filter(r => r.q > 0);
         const value = W.sum(items, r => r.q * (r.x.price || 0));
-        return `<div class="card card-pad"><div class="row nw"><div class="kpi-ic ${isRaw ? 'c-warn' : wh === 'shop' ? 'c-ok' : wh === 'prod' ? 'c-vio' : ''}">${I(isRaw ? 'flask' : wh === 'shop' ? 'cart' : wh === 'prod' ? 'factory' : 'warehouse')}</div><div style="min-width:0"><b style="font-family:var(--font-d)">${t(W.WH[wh])}</b><div class="muted" style="font-size:12.5px">${t('{n} позиций', { n: items.length })}</div></div></div>
+        return `<div class="card card-pad"><div class="row nw"><div class="kpi-ic ${isRaw ? 'c-warn' : 'c-ok'}">${I(isRaw ? 'factory' : 'warehouse')}</div><div style="min-width:0"><b style="font-family:var(--font-d)">${t(W.WH[wh])}</b><div class="muted" style="font-size:12.5px">${isRaw ? t('сырьё') : t('готовая продукция')} · ${t('{n} позиций', { n: items.length })}</div></div></div>
           <div class="kpi-val" style="font-size:21px">${W.moneyKpi(value)}</div><div class="muted" style="font-size:12.5px;margin-bottom:10px">${isRaw ? t('по закупочным ценам') : t('по ценам продажи')}</div>
-          ${items.sort((a, b) => b.q * (b.x.price || 0) - a.q * (a.x.price || 0)).slice(0, 5).map(r => `<div class="list-row" style="padding:7px 0"><div class="lr-main"><b style="font-size:13px;font-weight:500">${esc(r.x.name)}</b></div><span class="nowrap" style="font-size:13px;font-weight:600">${W.qty(r.q)} ${isRaw ? t(r.x.unit) : t('шт')}</span></div>`).join('')}</div>`;
+          ${items.sort((a, b) => b.q * (b.x.price || 0) - a.q * (a.x.price || 0)).slice(0, 8).map(r => `<div class="list-row" style="padding:7px 0"><div class="lr-main"><b style="font-size:13px;font-weight:500">${esc(r.x.name)}</b></div><span class="nowrap" style="font-size:13px;font-weight:600">${W.qty(r.q)} ${isRaw ? t(r.x.unit) : t('шт')}</span></div>`).join('')}</div>`;
       }).join('')}</div>`;
     }
-    return `<div class="toolbar">${W.seg([{ id: 'raw', label: t('Сырьё') }, { id: 'fg', label: t('Готовая продукция') }, { id: 'wh', label: t('Склады') }], S.part, 'part')}</div>${body}`;
+    return `<div class="toolbar">${W.seg([{ id: 'raw', label: t('Сырьё') }, { id: 'fg', label: t('Готовая продукция') }, { id: 'wh', label: t('Места хранения') }], S.part, 'part')}</div>${body}`;
   };
 
   /* ---------- вкладка «Калькуляция» ---------- */

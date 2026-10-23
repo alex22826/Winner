@@ -19,7 +19,7 @@
     let source = opt.source || (W.isDirector() || W.me().roles.includes('seller') ? 'walkin' : 'phone');
     const prods = W.db.products.filter(p => !p.archived);
     const custs = W.db.customers.slice().sort((a, b) => (b.regular - a.regular) || a.name.localeCompare(b.name));
-    const pOpts = (ch) => [['', t('Выберите товар')], ...prods.map(p => [p.id, p.name, `${t('ост.')} ${W.qty(W.stock('p', p.id, ch))}`])];
+    const pOpts = (ch) => [['', t('Выберите товар')], ...prods.map(p => [p.id, p.name, `${t('ост.')} ${W.qty(W.stock('p', p.id, W.FG))}`])];
     const row = (ch, it = {}) => `<div class="sale-row" style="display:grid;grid-template-columns:minmax(0,1fr) 92px 130px 36px;gap:8px;align-items:start;margin-bottom:8px">
         <div style="min-width:0"><select class="inp" data-r="p">${W.opts(pOpts(ch), it.p || '')}</select><div class="hint r-hint" style="font-size:12px;margin-top:4px;min-height:0"></div></div>
         <input class="inp num" data-r="qty" inputmode="decimal" value="${it.qty || 1}" aria-label="${t('Кол-во')}">
@@ -104,9 +104,9 @@
       rs.forEach(r => {
         const h = r.el.querySelector('.r-hint'), p = W.product(r.p);
         if (!p) { h.innerHTML = ''; return; }
-        const have = W.stock('p', p.id, c);
+        const have = W.stock('p', p.id, W.FG);
         h.innerHTML = r.qty > have
-          ? `<span style="color:${p.noShip ? 'var(--bad)' : 'var(--warn)'}">${p.noShip ? t('Не отгружать без остатка — в наличии {n} шт', { n: W.qty(have) }) : t('В канале «{c}» есть только {n} шт', { c: t(W.CHANNELS[c]), n: W.qty(have) })}</span>`
+          ? `<span style="color:${p.noShip ? 'var(--bad)' : 'var(--warn)'}">${p.noShip ? t('Не отгружать без остатка — в наличии {n} шт', { n: W.qty(have) }) : t('На складе только {n} шт', { n: W.qty(have) })}</span>`
           : `<span class="muted">${t('В наличии: {n} шт', { n: W.qty(have) })} · ${W.money(r.qty * r.price)}</span>`;
       });
       const sub = W.sum(rs, r => r.qty * r.price), disc = W.parseNum(m.el.querySelector('[name=discount]').value), total = Math.max(0, sub - disc);
@@ -133,7 +133,7 @@
       const block = W.checkShip(d.channel, items).filter(x => x.block);
       if (source === 'walkin' && block.length) return W.toast(t('Нельзя продать без остатка: {n}', { n: block.map(x => x.p.name).join(', ') }), 'err');
       const short = W.checkShip(d.channel, items).filter(x => !x.block);
-      if (source === 'walkin' && short.length && !await W.confirm({ title: t('Остатка не хватает'), text: t('По учёту в канале нет нужного количества: {n}. Всё равно продать?', { n: short.map(x => `${x.p.name} (${W.qty(x.have)})`).join(', ') }), ok: t('Продать'), danger: false })) return;
+      if (source === 'walkin' && short.length && !await W.confirm({ title: t('Остатка не хватает'), text: t('По учёту на складе нет нужного количества: {n}. Всё равно продать?', { n: short.map(x => `${x.p.name} (${W.qty(x.have)})`).join(', ') }), ok: t('Продать'), danger: false })) return;
       if (d.cust === '__new') {
         const c = { id: W.uid('k'), name: d.nc_name, type: d.nc_type, inn: d.nc_inn, contact: d.nc_contact || d.name || d.nc_name, phone: d.phone, address: d.address, regular: false, created: W.today() };
         if (d.nc_save) { W.db.customers.push(c); cust = c.id; }
@@ -306,10 +306,17 @@
       <div class="total">${t('Итого к оплате')}: ${W.money(total)}</div>
       <div class="signs"><div>${t('Производитель')}: ____________</div><div>${t('Заказчик')}: ____________</div></div>
       <div style="margin-top:18px;font-size:11px;color:#777">${t('Продажа №{n}', { n: W.no(s.no) })} · ${t(W.CHANNELS[s.channel])}</div></div>`;
-    const vat = 12;
-    return `<div class="doc">${W.docHead(t('Счёт-фактура №{n}', { n: W.no(no) }), t('от {d} · к договору поставки', { d: date }))}
-      <div class="parties"><div><b>${t('Поставщик')}</b>${esc(co.name)}<br>${t('ИНН')}: ${esc(co.inn)}<br>${esc(co.address)}<br>${t('р/с')} ${esc(co.account)}, ${esc(co.bank)}, ${t('МФО')} ${esc(co.mfo)}<br>${t('Директор')}: ${esc(co.director)}</div>
-        <div><b>${t('Покупатель')}</b>${esc(W.custName(s))}<br>${t('ИНН')}: ${esc(c.inn || '—')}<br>${esc(c.address || s.address || '—')}<br>${t('Тел.')}: ${esc(c.phone || s.phone || '—')}</div></div>
+    // ставку НДС задаёт директор в Администрировании; 0 — компания без НДС
+    const vat = Math.max(0, +(W.db.settings.vat ?? 12) || 0);
+    const parties = `<div class="parties"><div><b>${t('Поставщик')}</b>${esc(co.name)}<br>${t('ИНН')}: ${esc(co.inn)}<br>${esc(co.address)}<br>${t('р/с')} ${esc(co.account)}, ${esc(co.bank)}, ${t('МФО')} ${esc(co.mfo)}<br>${t('Директор')}: ${esc(co.director)}</div>
+        <div><b>${t('Покупатель')}</b>${esc(W.custName(s))}<br>${t('ИНН')}: ${esc(c.inn || '—')}<br>${esc(c.address || s.address || '—')}<br>${t('Тел.')}: ${esc(c.phone || s.phone || '—')}</div></div>`;
+    const head = W.docHead(t('Счёт-фактура №{n}', { n: W.no(no) }), t('от {d} · к договору поставки', { d: date }));
+    if (!vat) return `<div class="doc">${head}${parties}
+      <table><thead><tr><th>№</th><th>${t('Наименование')}</th><th>${t('Ед.')}</th><th class="r">${t('Кол-во')}</th><th class="r">${t('Цена')}</th><th class="r">${t('Стоимость')}</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${r.n}</td><td>${esc(r.p.name)}</td><td>${t('шт')}</td><td class="r">${W.qty(r.qty)}</td><td class="r">${W.money(r.price)}</td><td class="r">${W.money(r.sum)}</td></tr>`).join('')}</tbody></table>
+      <div class="total">${t('Всего')}: ${W.money(total)}<br><span style="font-weight:500;font-size:13px">${t('Без НДС')}</span></div>
+      <div class="signs"><div>${t('Руководитель')}: ____________ ${esc(W.shortName(co.director))}</div><div>${t('Главный бухгалтер')}: ____________</div></div></div>`;
+    return `<div class="doc">${head}${parties}
       <table><thead><tr><th>№</th><th>${t('Наименование')}</th><th>${t('Ед.')}</th><th class="r">${t('Кол-во')}</th><th class="r">${t('Цена')}</th><th class="r">${t('Стоимость без НДС')}</th><th class="r">${t('НДС')} ${vat}%</th><th class="r">${t('Стоимость с НДС')}</th></tr></thead>
       <tbody>${rows.map(r => { const nds = r.sum * vat / (100 + vat); return `<tr><td>${r.n}</td><td>${esc(r.p.name)}</td><td>${t('шт')}</td><td class="r">${W.qty(r.qty)}</td><td class="r">${W.money(r.price)}</td><td class="r">${W.money(r.sum - nds)}</td><td class="r">${W.money(nds)}</td><td class="r">${W.money(r.sum)}</td></tr>`; }).join('')}</tbody></table>
       <div class="total">${t('Всего с НДС')}: ${W.money(total)}<br><span style="font-weight:500;font-size:13px">${t('в т.ч. НДС')}: ${W.money(total * vat / (100 + vat))}</span></div>

@@ -40,11 +40,11 @@
       return { head: [t('Клиент'), t('Телефон'), t('Заказов с долгом'), t('Самый старый, дней'), t('Сумма долга')],
         rows: rows.map(([k, a]) => [k, a.phone || '', a.n, W.daysBetween(a.old, W.today()), M(a.d)]), foot: [t('Итого'), '', W.sum(rows, r => r[1].n), '', M(W.sum(rows, r => r[1].d))] };
     } },
-    { id: 'stock', icon: 'warehouse', page: 'warehouse', noPeriod: true, title: W.N('Остатки на складах'), desc: W.N('Готовая продукция по складам'), build: () => {
+    { id: 'stock', icon: 'warehouse', page: 'warehouse', noPeriod: true, title: W.N('Остатки на складе'), desc: W.N('Готовая продукция: остаток, резерв, стоимость'), build: () => {
       const ps = W.db.products.filter(p => !p.archived);
-      return { head: [t('Товар'), t(W.WH.prod), t(W.WH.main), t(W.WH.shop), t('Всего'), t('Стоимость')],
-        rows: ps.map(p => [p.name, Q(W.stock('p', p.id, 'prod')), Q(W.stock('p', p.id, 'main')), Q(W.stock('p', p.id, 'shop')), Q(W.stock('p', p.id)), M(Math.max(0, W.stock('p', p.id)) * p.price)]),
-        foot: [t('Итого'), '', '', '', Q(W.sum(ps, p => W.stock('p', p.id))), M(W.sum(ps, p => Math.max(0, W.stock('p', p.id)) * p.price))] };
+      return { head: [t('Товар'), t('Категория'), t('На складе'), t('В резерве'), t('Цена'), t('Стоимость')],
+        rows: ps.map(p => [p.name, W.catName(p.cat), Q(W.stock('p', p.id)), Q(W.reserved(p.id)), M(p.price), M(Math.max(0, W.stock('p', p.id)) * p.price)]),
+        foot: [t('Итого'), '', Q(W.sum(ps, p => W.stock('p', p.id))), Q(W.sum(ps, p => W.reserved(p.id))), '', M(W.sum(ps, p => Math.max(0, W.stock('p', p.id)) * p.price))] };
     } },
     { id: 'raw', icon: 'flask', page: 'production', noPeriod: true, title: W.N('Сырьё и потребность'), desc: W.N('Остаток, страховой порог и что закупить'), build: () => {
       const rows = W.rawNeeds();

@@ -28,7 +28,7 @@
           ${W.fi({ name: 'minStock', label: t('Мин. порог, шт'), type: 'number', value: p.minStock ?? '', ph: String(W.db.settings.lowStock), hint: t('Уведомить, когда остаток дойдёт до порога') })}
           <div class="full card card-pad" style="box-shadow:none;background:var(--surface-2)">${W.fsw({ name: 'noShip', label: t('Не отгружать без остатка'), checked: p.noShip })}
             <div class="hint mt-8">${t('Программа не даст продать или отгрузить товар, если его нет на складе канала продажи.')}</div></div>
-          ${!isNew ? `<div class="full"><div class="label">${t('Остатки')}</div><div class="row mt-8">${['prod', 'main', 'shop'].map(w => `<span class="tag">${t(W.WH[w])}: ${W.qty(W.stock('p', p.id, w))}</span>`).join('')}</div></div>` : ''}
+          ${!isNew ? `<div class="full"><div class="label">${t('Остаток')}</div><div class="row mt-8"><span class="tag">${t('На складе')}: ${W.qty(W.stock('p', p.id))} ${t('шт')}</span>${W.reserved(p.id) ? `<span class="tag">${t('в резерве {n}', { n: W.qty(W.reserved(p.id)) })}</span>` : ''}</div></div>` : ''}
         </div></div>`,
       foot: `${!isNew && W.isDirector() ? `<div class="left"><button class="btn danger" data-m="del">${I('trash')}${t('Удалить')}</button></div>` : ''}<button class="btn" data-m="close">${t('Отмена')}</button><button class="btn primary" data-m="save">${I('check')}${t('Сохранить')}</button>`,
       onMount: (el) => {
@@ -88,7 +88,8 @@
       size: 'sm', title: esc(p.name), sub: esc(W.catName(p.cat)), icon: 'grid',
       body: `<div class="pcard" style="box-shadow:none"><div class="ph">${W.productArt(p)}</div></div>
         <div class="row mt-16" style="justify-content:space-between"><span class="muted">${t('Цена за штуку')}</span><b class="money" style="font-size:18px;font-family:var(--font-d)">${W.money(p.price)}</b></div>
-        ${['shop', 'main', 'prod'].map(w => `<div class="row mt-8" style="justify-content:space-between"><span class="muted">${t(W.WH[w])}</span><b>${W.qty(W.stock('p', p.id, w))} ${t('шт')}</b></div>`).join('')}
+        <div class="row mt-8" style="justify-content:space-between"><span class="muted">${t('На складе')}</span><b>${W.qty(W.stock('p', p.id))} ${t('шт')}</b></div>
+        ${W.reserved(p.id) ? `<div class="row mt-8" style="justify-content:space-between"><span class="muted">${t('В резерве')}</span><b>${W.qty(W.reserved(p.id))} ${t('шт')}</b></div>` : ''}
         ${p.noShip ? `<div class="mt-12">${W.badge(t('Не отгружать без остатка'), 'warn')}</div>` : ''}`,
       foot: `<button class="btn" data-m="close">${t('Закрыть')}</button>${canSell ? `<button class="btn primary" data-m="sell">${I('cart')}${t('Продать')}</button>` : ''}`,
       actions: { sell: (b, m) => { m.close(); W.saleForm({ source: 'walkin', item: { p: p.id, qty: 1, price: p.price } }); } },
@@ -97,19 +98,18 @@
 
   const grid = () => {
     const S = st(), q = S.q.trim().toLowerCase(), canE = W.allow('catalog.edit');
-    const me = W.me(), shopFirst = me.roles.includes('seller');
     const list = W.db.products.filter(p => !p.archived && (S.cat === 'all' || (S.cat === 'none' ? !p.cat : p.cat === S.cat))
       && (S.avail === 'all' || (S.avail === 'in' ? W.stock('p', p.id) > 0 : W.stock('p', p.id) <= 0))
       && (!q || (p.name + ' ' + (p.sku || '')).toLowerCase().includes(q)));
     return `<div class="row mb-16" style="justify-content:space-between"><span class="muted">${t('Найдено позиций: {n}', { n: `<b style="color:var(--text)">${list.length}</b>` })}</span></div>
       ${list.length ? `<div class="prod-grid">${list.map(p => {
-        const total = W.stock('p', p.id), shop = W.stock('p', p.id, 'shop'), low = total > 0 && total <= W.minStock(p);
+        const total = W.stock('p', p.id), res = W.reserved(p.id), low = total > 0 && total <= W.minStock(p);
         return `<div class="pcard" data-a="open" data-id="${p.id}" style="cursor:pointer"><div class="ph">${W.productArt(p)}
           <div class="p-flags">${total <= 0 ? `<span class="flag nostock">${t('Нет в наличии')}</span>` : low ? `<span class="flag low">${t('Мало')}</span>` : ''}${p.noShip ? `<span class="flag noship">${t('Не отгружать без остатка')}</span>` : ''}</div>
           ${canE ? `<button class="btn sm edit" data-a="edit" data-id="${p.id}">${I('edit')}${t('Изменить')}</button>` : ''}</div>
           <div class="pb"><div class="pcat">${esc(W.catName(p.cat))}</div><div class="pname">${esc(p.name)}</div>
             <div class="pprice">${W.money(p.price)} <small>/ ${t('шт')}</small></div>
-            <div class="pstock">${total > 0 ? `<span><span class="muted">${shopFirst ? t('В магазине') : t('На складе')}:</span> <b>${W.qty(shopFirst ? shop : total)} ${t('шт')}</b></span><span class="muted" style="font-size:12px">${shopFirst ? t('всего {n}', { n: W.qty(total) }) : t('магазин {n}', { n: W.qty(shop) })}</span>` : `<span style="color:var(--bad);font-weight:600">${t('Нет в наличии')}</span>`}</div></div></div>`;
+            <div class="pstock">${total > 0 ? `<span><span class="muted">${t('На складе')}:</span> <b>${W.qty(total)} ${t('шт')}</b></span>${res ? `<span class="muted" style="font-size:12px">${t('в резерве {n}', { n: W.qty(res) })}</span>` : ''}` : `<span style="color:var(--bad);font-weight:600">${t('Нет в наличии')}</span>`}</div></div></div>`;
       }).join('')}</div>` : W.empty(t('Ничего не найдено'), t('Измените поиск или выберите другой раздел'), 'grid')}`;
   };
 

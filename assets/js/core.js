@@ -4,9 +4,9 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-23.5';
+  W.APP_VERSION = '2026-10-23.6';
   const DB_KEY = 'wn.db.v1';
-  W.DB_VERSION = 2;
+  W.DB_VERSION = 3;
 
   /* ---------- утилиты ---------- */
   W.uid = (p = '') => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -57,9 +57,19 @@
   W.parseNum = s => { const v = parseFloat(String(s ?? '').replace(/\s| /g, '').replace(',', '.').replace('−', '-')); return isNaN(v) ? 0 : v; };
 
   /* ---------- база ---------- */
+  // v3 (ответ заказчика): склад готовой продукции один — бывшие «склад производства» и «магазин»
+  // сливаются в него, перемещения между ними больше не нужны; появилась ставка НДС в настройках
+  const migrate2to3 = d => {
+    d.moves = d.moves.filter(m => !(m.t === 'p' && m.kind === 'transfer'));
+    d.moves.forEach(m => { if (m.t === 'p') m.wh = 'main'; });
+    if (d.settings.vat == null) d.settings.vat = 12;
+    d.v = 3;
+    localStorage.setItem(DB_KEY, JSON.stringify(d));
+  };
   W.initDB = () => {
     let d = null;
     try { const raw = localStorage.getItem(DB_KEY); if (raw) d = JSON.parse(raw); } catch (e) { d = null; }
+    if (d && d.v === 2) migrate2to3(d); // данные пользователя переносим, а не сбрасываем
     if (!d || d.v !== W.DB_VERSION) { d = W.seed(); W.db = d; W.save(true); }
     W.db = d;
     // 2026-10-23: компания переименована, сохранённые данные обновляем без сброса
@@ -144,12 +154,12 @@
   W.no = n => String(n).padStart(4, '0');
 
   /* ---------- справочники ---------- */
+  // два места хранения: сырьё — на производстве, готовая продукция — на складе (откуда идут все продажи)
   W.WH = {
-    raw:  N('Склад сырья'),
-    prod: N('Склад производства'),
-    main: N('Основной склад'),
-    shop: N('Магазин'),
+    raw:  N('Производство'),
+    main: N('Склад'),
   };
+  W.FG = 'main'; // склад готовой продукции — для всех каналов продаж
   W.CHANNELS = { shop: N('Магазин'), main: N('Склад'), prod: N('Производство') };
   W.METHODS = { cash: N('Наличные'), card: N('Карта'), corp: N('Корпоративная карта'), transfer: N('Безналичный расчёт') };
   W.STAGES = [
@@ -192,7 +202,7 @@
   };
   W.OPEN_STAGES = ['new', 'picking', 'ready'];
   W.reserved = (pid, wh) => memo('res:' + pid + ':' + (wh || ''), () => W.sum(
-    W.db.sales.filter(s => !s.shipped && W.OPEN_STAGES.includes(s.stage) && (!wh || s.channel === wh)),
+    W.db.sales.filter(s => !s.shipped && W.OPEN_STAGES.includes(s.stage)),
     s => W.sum(s.items.filter(i => i.p === pid), i => i.qty)));
 
   /* продажи: оплаты, возвраты, долги */
@@ -301,7 +311,7 @@
     const issues = [];
     items.forEach(i => {
       const p = W.product(i.p); if (!p) return;
-      const have = W.stock('p', p.id, channel);
+      const have = W.stock('p', p.id, W.FG);
       if (have < i.qty) issues.push({ p, have, need: i.qty, block: !!p.noShip });
     });
     return issues;
@@ -311,7 +321,7 @@
     const issues = W.checkShip(sale.channel, sale.items);
     const block = issues.filter(x => x.block);
     if (block.length) return { block };
-    sale.items.forEach(i => W.move('p', i.p, sale.channel, -i.qty, 'sale', sale.id));
+    sale.items.forEach(i => W.move('p', i.p, W.FG, -i.qty, 'sale', sale.id));
     sale.shipped = true; sale.shippedAt = W.now();
     return true;
   };
@@ -353,7 +363,7 @@
     const r = { id: W.uid('r'), no: W.nextNo('ret'), at: W.now(), sale: sale.id, items, amount, method, reason: reason || '', by: meId() };
     W.db.returns.push(r);
     W.invalidate();
-    if (sale.shipped) items.forEach(i => W.move('p', i.p, sale.channel, i.qty, 'return', r.id));
+    if (sale.shipped) items.forEach(i => W.move('p', i.p, W.FG, i.qty, 'return', r.id));
     // деньги отдаём только если после возврата клиент переплатил
     const money = Math.min(amount, Math.max(0, W.round(W.salePaid(sale) - W.saleNet(sale))));
     if (money > 0) {
@@ -427,7 +437,7 @@
     const short = W.prodShortage(o);
     if (short.length) return { short };
     (W.db.recipes[o.p] || []).forEach(r => W.move('m', r.m, 'raw', -r.qty * o.qty, 'consume', o.id));
-    W.move('p', o.p, 'prod', o.qty, 'produce', o.id);
+    W.move('p', o.p, W.FG, o.qty, 'produce', o.id);
     o.status = 'done'; o.doneAt = W.now(); o.cost = W.round(W.unitCost(o.p) * o.qty);
     return true;
   };
