@@ -176,11 +176,12 @@
         const S = st(), [from, to] = W.periodRange(S.period);
         if (W.cur.params.tab === 'writeoffs') {
           const ws = W.db.writeoffs.filter(w => w.t === S.kind && W.inRange(w.at, from, to));
-          return W.downloadCSV(t('Списания'), ['№', t('Дата'), t('Наименование'), t('Кол-во'), t('Ед.'), t('Причина'), t('Комментарий'), t('Сумма'), t('Кто')],
-            ws.map(w => [w.no, W.fmtDT(w.at), itemName(w), String(w.qty).replace('.', ','), unit(w), t(w.reason), w.note || '', w.cost, W.userName(w.by)]));
+          return W.downloadXLSX(t('Списания'), ['№', t('Дата'), t('Наименование'), t('Кол-во'), t('Ед.'), t('Причина'), t('Комментарий'), t('Сумма'), t('Кто')],
+            ws.map(w => [w.no, W.fmtDT(w.at), itemName(w), w.qty, unit(w), t(w.reason), W.tx(w.note || ''), w.cost, W.userName(w.by)]),
+            { foot: ws.length ? [t('Итого'), '', '', '', '', '', '', W.sum(ws, w => w.cost), ''] : null });
         }
         const rows = W.db.moves.filter(m => m.t === S.kind && (!S.wh || m.wh === S.wh) && W.inRange(m.at, from, to));
-        W.downloadCSV(t('Движение по складу'), [t('Дата'), t('Наименование'), t('Склад'), t('Операция'), t('Кол-во'), t('Ед.')], rows.map(m => [W.fmtDT(m.at), itemName(m), t(W.WH[m.wh]), t(MK[m.kind] || m.kind), String(m.qty).replace('.', ','), unit(m)]));
+        W.downloadXLSX(t('Движение по складу'), [t('Дата'), t('Наименование'), t('Склад'), t('Операция'), t('Кол-во'), t('Ед.')], rows.map(m => [W.fmtDT(m.at), itemName(m), t(W.WH[m.wh]), t(MK[m.kind] || m.kind), m.qty, unit(m)]));
       },
     },
   });

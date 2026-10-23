@@ -234,7 +234,7 @@
       to: el => { st().to = el.value; W.refresh(); },
       rlang: el => { st().rlang = el.dataset.v; W.refresh(); W.toast(el.dataset.v === 'uz' ? 'Hisobot tili: oʻzbekcha' : 'Язык отчёта: русский', 'info'); },
       print: () => printReport(st().mode),
-      csv: () => { const r = report(st().mode); W.downloadCSV(`${r.title} — ${r.sub}`, r.head, [...r.body, r.totals]); },
+      csv: () => { const r = report(st().mode); W.downloadXLSX(`${r.title} — ${r.sub}`, r.head, r.body, { foot: r.body.length ? r.totals : null, title: r.title, sub: r.sub }); },
       pay: el => { const r = W.salaryRows(period().months).find(x => x.u.id === el.dataset.id); payForm(r, period()); },
       hist: el => empHistory(W.db.users.find(u => u.id === el.dataset.id)),
       addEmp: () => W.employeeForm(null, { salaryOnly: !W.isDirector() }),

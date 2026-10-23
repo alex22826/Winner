@@ -681,6 +681,79 @@
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   };
+  /* ---------- выгрузка в настоящий Excel (.xlsx) без библиотек ----------
+     Файл .xlsx — это zip с XML-листами. Пишем zip без сжатия (метод «stored»): Excel его открывает,
+     а нам не нужен ни CDN, ни интернет. Числа уходят числами (суммируются в Excel), шапка жирная. */
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const zipStored = files => {
+    const enc = new TextEncoder(), parts = [], dir = []; let off = 0;
+    files.forEach(([name, text]) => {
+      const nm = enc.encode(name), d = enc.encode(text), crc = crc32(d);
+      const h = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [12, 0x21, 2], [14, crc, 4], [18, d.length, 4], [22, d.length, 4], [26, nm.length, 2]].forEach(([o, v, s]) => s === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+      const c = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [14, 0x21, 2], [16, crc, 4], [20, d.length, 4], [24, d.length, 4], [28, nm.length, 2], [42, off, 4]].forEach(([o, v, s]) => s === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true));
+      parts.push(new Uint8Array(h.buffer), nm, d); dir.push(new Uint8Array(c.buffer), nm);
+      off += 30 + nm.length + d.length;
+    });
+    const e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+    e.setUint32(12, dir.reduce((s, x) => s + x.length, 0), true); e.setUint32(16, off, true);
+    return new Blob([...parts, ...dir, new Uint8Array(e.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  };
+  const xe = v => String(v ?? '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colName = i => { let s = ''; for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  // стили: 0 текст · 1 шапка · 2 целое · 3 дробное · 4–6 то же жирным (итоги) · 7 заголовок · 8 серая подпись
+  const XLSX_STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0"/><numFmt numFmtId="165" formatCode="#,##0.0##"/></numFmts>
+<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><name val="Calibri"/></font><font><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEEF0F6"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FFB0B6C8"/></bottom><diagonal/></border><border><left/><right/><top style="thin"><color rgb="FFB0B6C8"/></top><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1"/><xf numFmtId="164" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="165" fontId="1" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  // W.downloadXLSX(имя, шапка, строки, { foot: строка итогов, title, sub }) — значения: числа или строки
+  W.downloadXLSX = (name, head, rows, { foot = null, title = name, sub = '' } = {}) => {
+    const c = W.db.settings.company, top = 4; // строки 1–3: заголовок, реквизиты, пусто; 4 — шапка таблицы
+    const info = [c.name, sub, `${t('Сформировано')}: ${W.fmtDT(W.now())} · ${W.me().name}`].filter(Boolean).join(' · ');
+    const body = rows.concat(foot ? [foot] : []), cols = head.length;
+    const cell = (v, r, i, bold) => {
+      const ref = colName(i) + r;
+      if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}" s="${(Number.isInteger(v) ? 2 : 3) + (bold ? 3 : 0)}"><v>${v}</v></c>`;
+      if (v == null || v === '') return bold ? `<c r="${ref}" s="4"/>` : '';
+      return `<c r="${ref}" t="inlineStr" s="${bold ? 4 : 0}"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+    };
+    const str = v => `<c t="inlineStr"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+    const sheetData = [
+      `<row r="1" ht="22" customHeight="1">${str(title).replace('<c ', '<c r="A1" s="7" ')}</row>`,
+      `<row r="2">${str(info).replace('<c ', '<c r="A2" s="8" ')}</row>`,
+      `<row r="${top}" ht="30" customHeight="1">${head.map((h, i) => `<c r="${colName(i) + top}" t="inlineStr" s="1"><is><t xml:space="preserve">${xe(h)}</t></is></c>`).join('')}</row>`,
+      ...body.map((r, k) => `<row r="${top + 1 + k}">${r.map((v, i) => cell(v, top + 1 + k, i, foot && k === body.length - 1)).join('')}</row>`),
+    ].join('');
+    // ширина колонки — по самому длинному значению (числа — с разрядами)
+    const len = v => typeof v === 'number' ? W.fmtNum(v, Number.isInteger(v) ? 0 : 3).length + 1 : String(v ?? '').length;
+    const widths = head.map((h, i) => Math.min(60, Math.max(8, Math.min(String(h).length, 24), ...body.map(r => len(r[i]))) + 2));
+    const range = `$A$${top}:$${colName(cols - 1)}$${top + rows.length}`; // фильтр — без строки итогов
+    const sheetName = (String(title).replace(/[\[\]:*?/\\]/g, ' ').trim().slice(0, 31) || 'WINNER');
+    const files = [
+      ['[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
+      ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+      ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets><sheet name="${xe(sheetName)}" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${xe(sheetName.replace(/'/g, "''"))}'!${range}</definedName></definedNames></workbook>`],
+      ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+      ['xl/styles.xml', XLSX_STYLES],
+      ['xl/worksheets/sheet1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="${top}" topLeftCell="A${top + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sheetData}</sheetData>${body.length ? `<autoFilter ref="${range.replace(/\$/g, '')}"/>` : ''}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/></worksheet>`],
+    ];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipStored(files));
+    a.download = name.replace(/:\s*/g, ' — ').replace(/[\\/*?"<>|]+/g, '_') + '.xlsx';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
   W.downloadFile = (name, text, type = 'application/json') => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type }));

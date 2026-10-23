@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-23.7';
+  W.APP_VERSION = '2026-10-23.8';
   const DB_KEY = 'wn.db.v1';
   W.DB_VERSION = 3;
 

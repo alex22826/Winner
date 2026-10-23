@@ -133,7 +133,7 @@
       },
       csv: () => {
         const rep = avail().find(r => r.id === st().rep) || avail()[0], [f, to] = range(), d = rep.build(f, to);
-        W.downloadCSV(`${t(rep.title)} ${periodLabel(rep)}`, d.head, [...d.rows.map(r => r.map(raw)), d.foot.map(raw)]);
+        W.downloadXLSX(`${t(rep.title)} ${periodLabel(rep)}`, d.head, d.rows.map(r => r.map(raw)), { foot: d.rows.length ? d.foot.map(raw) : null, title: t(rep.title), sub: periodLabel(rep) });
       },
     },
   });

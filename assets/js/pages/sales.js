@@ -459,11 +459,11 @@
       csv: () => {
         const tab = W.cur.params.tab;
         if (tab === 'debts') {
-          return W.downloadCSV(t('Долги по отгрузке'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма заказа'), t('Оплачено'), t('Должны отгрузить на'), t('Стадия')],
+          return W.downloadXLSX(t('Долги по отгрузке'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма заказа'), t('Оплачено'), t('Должны отгрузить на'), t('Стадия')],
             shipDebtRows().map(s => [W.no(s.no), W.fmtDT(s.at), t(W.CHANNELS[s.channel]), W.custName(s), s.phone, W.saleNet(s), W.salePaid(s), W.shipDebt(s), W.stageName(s.stage)]));
         }
         const rows = W.db.sales.filter(s => { const [f, to] = W.periodRange(st().period); return W.inRange(s.at, f, to); });
-        W.downloadCSV(t('История продаж'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма'), t('Оплачено'), t('Долг'), t('Стадия')],
+        W.downloadXLSX(t('История продаж'), [t('№'), t('Дата'), t('Канал'), t('Клиент'), t('Телефон'), t('Сумма'), t('Оплачено'), t('Долг'), t('Стадия')],
           rows.map(s => [W.no(s.no), W.fmtDT(s.at), t(W.CHANNELS[s.channel]), W.custName(s), s.phone, W.round(s.total), W.salePaid(s), W.saleDebt(s), W.stageName(s.stage)]));
       },
     },
