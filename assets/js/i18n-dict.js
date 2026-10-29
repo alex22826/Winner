@@ -1066,6 +1066,7 @@ W.DICT = {
 "Разрешить": "Ruxsat berish",
 "Разрешить в долг": "Qarzga ruxsat berish",
 "Разрешить отгрузку в долг?": "Qarzga jo'natishga ruxsat berilsinmi?",
+"к прошлому периоду": "o'tgan davrga nisbatan",
 /* описания операций из данных */
 "Помятые банки": "Ezilgan bankalar",
 "Оклады и авансы за {n}": "{n} uchun oklad va avanslar",

@@ -1,0 +1,236 @@
+/* =========================================================================
+   Спокойный вид («calm») — пилот на Сводке и в меню.
+   Включается классом html.ui-calm (app.html?ui=calm, выключить — ?ui=classic).
+   Логику не трогает: только цвет, шрифт, отступы, бейджи, графики, радиусы и тени.
+   Правила вида:
+   - фон нейтральный, карточки на тон светлее, граница 1px, теней нет;
+   - один акцент (синий) — только активный пункт, главное значение, основная кнопка;
+   - один шрифт (Golos Text), цифры табличные;
+   - отступы по сетке 4/8 px, радиус один — 10 px;
+   - счётчики — цифры без плашек: серые, красные — только где нужно действие;
+   - статусы — цветная точка и обычный текст, без цветного фона;
+   - графики — тонкая линия без заливки, тонкие прямые полосы.
+   Градиент остаётся только в логотипе: это фирменный знак.
+   ========================================================================= */
+
+html.ui-calm {
+  --font-d: var(--font);
+
+  --bg: #f6f6f7;
+  --surface: #ffffff;
+  --surface-2: #fafafb;
+  --surface-3: #f0f0f2;
+  --line: #e6e6e9;
+  --line-2: #d8d8dd;
+  --text: #17171a;
+  --text-2: #4b4b53;
+  --muted: #75757f;
+
+  --brand: #2f5bd3;
+  --brand-2: #284fbb;
+  --brand-soft: #edf1fb;
+  --brand-ink: #2a50bd;
+
+  --ok: #1f7a55;   --ok-bg: #edf6f1;   --ok-dot: #2f9e6e;
+  --warn: #8f5a12; --warn-bg: #f8f1e6; --warn-dot: #d39436;
+  --bad: #b3333a;  --bad-bg: #f9ecec;  --bad-dot: #d4555b;
+  --info: #2a50bd; --info-bg: #edf1fb; --info-dot: #4a72d6;
+  --vio: #5f55a8;  --vio-bg: #f1f0f8;
+  --badge: var(--bad);
+
+  /* спокойная палитра графиков */
+  --s1: #4a72d6; --s2: #c98a4b; --s3: #3f9a72;
+
+  --side: var(--surface);
+  --side-2: var(--surface);
+  --side-line: var(--line);
+  --side-text: var(--text-2);
+  --side-muted: var(--muted);
+
+  --r-xs: 10px; --r-sm: 10px; --r: 10px; --r-lg: 10px; --r-xl: 10px;
+  --sh-1: none;
+  --sh-2: none;
+  --sh-3: 0 12px 32px -12px rgba(0, 0, 0, .18); /* только у всплывающих слоёв */
+  --ring: 0 0 0 3px rgba(47, 91, 211, .2);
+}
+html.ui-calm[data-theme="dark"] {
+  --bg: #0e0e10;
+  --surface: #161619;
+  --surface-2: #19191d;
+  --surface-3: #202025;
+  --line: #27272d;
+  --line-2: #323239;
+  --text: #ececef;
+  --text-2: #b6b6be;
+  --muted: #868690;
+
+  /* кнопка с белым текстом — тёмнее; акцентный текст на тёмном фоне — светлее (brand-ink) */
+  --brand: #4a6fd6;
+  --brand-2: #5a7ee0;
+  --brand-soft: rgba(123, 156, 255, .12);
+  --brand-ink: #a3b8ff;
+
+  --ok: #6cc59c;   --ok-bg: rgba(63, 154, 114, .14);  --ok-dot: #4fb385;
+  --warn: #e0b072; --warn-bg: rgba(211, 148, 54, .14); --warn-dot: #d39a4a;
+  --bad: #f08a8f;  --bad-bg: rgba(212, 85, 91, .15);  --bad-dot: #e0676d;
+  --info: #a9bdff; --info-bg: rgba(123, 156, 255, .14);
+  --vio: #b3a9e6;  --vio-bg: rgba(140, 125, 210, .15);
+
+  --s1: #6f95e8; --s2: #d39a5c; --s3: #5bb08a;
+  --sh-3: 0 12px 32px -12px rgba(0, 0, 0, .6);
+  --ring: 0 0 0 3px rgba(123, 156, 255, .3);
+}
+
+/* ---------- меню слева ---------- */
+html.ui-calm .side { background: var(--surface); color: var(--text-2); border-right: 1px solid var(--line); }
+html.ui-calm .side::after { display: none; }
+html.ui-calm .side-head { padding: 16px 16px 12px; min-height: 72px; }
+html.ui-calm .logo-mark { width: 40px; height: 40px; border-radius: 10px; box-shadow: none; }
+html.ui-calm .logo-mark svg { filter: none; }
+html.ui-calm .logo-text b { color: var(--text); font-weight: 700; letter-spacing: .04em; font-size: 17px; }
+html.ui-calm .logo-text span { letter-spacing: 0; }
+html.ui-calm .side-collapse { border-radius: 8px; background: transparent; }
+html.ui-calm .side-collapse:hover { color: var(--text); background: var(--surface-3); }
+html.ui-calm .side-nav { padding: 8px 12px 16px; }
+html.ui-calm .nav-group { margin-top: 16px; }
+html.ui-calm .nav-group:first-child { margin-top: 0; }
+html.ui-calm .nav-label { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; padding: 0 12px 4px; }
+html.ui-calm .nav-item { padding: 8px 12px; margin: 2px 0; border-radius: 8px; font-size: 14px; font-weight: 400; color: var(--text-2); }
+html.ui-calm .nav-item .ic { color: var(--muted); }
+html.ui-calm .nav-item:hover { background: var(--surface-3); color: var(--text); }
+html.ui-calm .nav-item:hover .ic { color: var(--text-2); }
+html.ui-calm .nav-item.active { background: var(--surface-3); box-shadow: none; color: var(--text); font-weight: 500; }
+html.ui-calm .nav-item.active .ic { color: var(--brand-ink); }
+html.ui-calm .nav-item.active::before { display: none; }
+/* счётчики: цифра без плашки; красная — только там, где ждут действия */
+html.ui-calm .nav-badge { min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; color: var(--bad); font-size: 12px; font-weight: 500; }
+html.ui-calm .nav-badge.soft { background: none; color: var(--muted); }
+html.ui-calm .side-foot { padding: 12px; }
+html.ui-calm .me-card { border-radius: 10px; background: transparent; border-color: var(--line); }
+html.ui-calm .me-card:hover { background: var(--surface-3); }
+html.ui-calm .me-card .who b { color: var(--text); font-weight: 500; }
+html.ui-calm .side ::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--muted) 40%, transparent); }
+html.ui-calm .side .lang-switch.dark { background: var(--surface); border-color: var(--line); }
+html.ui-calm .side .lang-switch.dark button { color: var(--muted); }
+html.ui-calm .side .lang-switch.dark button.on { color: var(--text); }
+html.ui-calm .rail-tip { background: var(--text); color: var(--bg); border-radius: 8px; }
+html.ui-calm .shell.rail .nav-item.has-dot::after { background: var(--bad-dot); box-shadow: 0 0 0 2px var(--surface); }
+
+/* ---------- верхняя панель ---------- */
+html.ui-calm .icon-btn { border-radius: 10px; box-shadow: none; }
+html.ui-calm .icon-btn .dot { top: 8px; right: 8px; min-width: 0; width: 8px; height: 8px; padding: 0; font-size: 0; background: var(--bad-dot); box-shadow: 0 0 0 2px var(--surface); }
+html.ui-calm .lang-switch { border-radius: 10px; box-shadow: none; }
+html.ui-calm .lang-switch button { border-radius: 8px; font-weight: 500; letter-spacing: 0; }
+html.ui-calm .lang-switch button.on { color: var(--text); }
+html.ui-calm .lang-switch .pill { border-radius: 8px; background: var(--surface-3); box-shadow: none; }
+html.ui-calm .top-user { border-radius: 10px; box-shadow: none; }
+html.ui-calm .top-user b { font-weight: 500; }
+
+/* аватары — без градиента, нейтральный фон */
+html.ui-calm .avatar { background: var(--surface-3); color: var(--text-2); box-shadow: none; font-weight: 600; border-radius: 10px; }
+html.ui-calm .avatar.sm, html.ui-calm .top-user .avatar { border-radius: 8px; }
+
+/* ---------- заголовок страницы ---------- */
+html.ui-calm .page-head { margin: 8px 0 24px; }
+html.ui-calm .page-head h1 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+html.ui-calm .page-head h1 .yr { color: var(--muted); font-weight: 400; }
+html.ui-calm .h-eyebrow { font-size: 13px; font-weight: 400; letter-spacing: 0; margin-bottom: 4px; }
+html.ui-calm .h-eyebrow i { display: none; }
+
+/* ---------- кнопки ---------- */
+html.ui-calm .btn { border-radius: 10px; box-shadow: none; font-weight: 500; }
+html.ui-calm .btn.primary { box-shadow: none; }
+html.ui-calm .btn.paint { background: var(--brand); box-shadow: none; text-shadow: none; }
+html.ui-calm .btn.paint:hover { filter: none; background: var(--brand-2); }
+
+/* ---------- карточки и показатели ---------- */
+html.ui-calm .card { border-radius: 10px; box-shadow: none; }
+/* шапка карточки одной высоты — с кнопкой и без (кнопка sm — 32 px) */
+html.ui-calm .card-head { padding: 20px 20px 0; min-height: 52px; }
+html.ui-calm .card-head h3 { font-size: 15px; font-weight: 600; }
+html.ui-calm .card-head .sub { font-size: 12px; }
+html.ui-calm .card-body { padding: 16px 20px 20px; }
+html.ui-calm .card-body.flush { padding: 16px 0 0; }
+html.ui-calm .card-pad { padding: 20px; }
+html.ui-calm .grid { gap: 16px; }
+
+html.ui-calm .kpis { gap: 16px; margin-bottom: 16px; }
+html.ui-calm .kpi { padding: 20px; border-radius: 10px; box-shadow: none; }
+html.ui-calm .kpi.link:hover { transform: none; box-shadow: none; border-color: var(--line-2); }
+html.ui-calm .kpi-top { gap: 8px; }
+html.ui-calm .kpi-ic, html.ui-calm .kpi-ic[class*="c-"] { width: 20px; height: 20px; border-radius: 0; background: none; color: var(--muted); }
+html.ui-calm .kpi-ic .ic { width: 18px; height: 18px; }
+html.ui-calm .kpi-label { font-size: 13px; font-weight: 400; color: var(--text-2); }
+html.ui-calm .kpi-val { font-size: 24px; font-weight: 600; letter-spacing: -.01em; margin-top: 12px; }
+html.ui-calm .kpis.k5 .kpi-val { font-size: 22px; }
+html.ui-calm .kpi-val small { font-weight: 400; }
+html.ui-calm .kpi-foot { margin-top: 4px; font-size: 12px; }
+/* главная карточка — обычная, акцентом только число */
+html.ui-calm .kpi.hero { background: var(--surface); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
+html.ui-calm .kpi.hero .kpi-label { color: var(--text-2); }
+html.ui-calm .kpi.hero .kpi-foot { color: var(--muted); }
+html.ui-calm .kpi.hero .kpi-ic { background: none; color: var(--brand-ink); }
+html.ui-calm .kpi.hero .kpi-val { color: var(--brand-ink); }
+html.ui-calm .kpi.hero .kpi-val small { color: var(--muted); }
+/* тренд — сухим текстом */
+html.ui-calm .trend { font-weight: 500; font-variant-numeric: tabular-nums; }
+html.ui-calm .trend.up { color: var(--ok); }
+html.ui-calm .trend.down { color: var(--bad); }
+
+/* ---------- статусы: точка и текст, без цветного фона ---------- */
+html.ui-calm .badge { height: auto; padding: 0; background: none; border-radius: 0; color: var(--text-2); font-weight: 500; gap: 6px; }
+html.ui-calm .badge::before { width: 6px; height: 6px; background: var(--muted); opacity: 1; }
+html.ui-calm .badge.ok::before { background: var(--ok-dot); }
+html.ui-calm .badge.warn::before { background: var(--warn-dot); }
+html.ui-calm .badge.bad::before { background: var(--bad-dot); }
+html.ui-calm .badge.info::before { background: var(--info-dot); }
+html.ui-calm .badge.vio::before { background: var(--s1); }
+html.ui-calm .badge.ok, html.ui-calm .badge.warn, html.ui-calm .badge.bad, html.ui-calm .badge.info, html.ui-calm .badge.vio { background: none; color: var(--text-2); }
+html.ui-calm .badge.plain { color: var(--muted); font-weight: 400; }
+
+/* вкладки и сегменты (общие элементы, чтобы меню и Сводка не расходились с остальным) */
+html.ui-calm .tabs .ink { height: 2px; border-radius: 0; background: var(--brand); }
+html.ui-calm .tab { font-weight: 500; }
+html.ui-calm .tab .cnt, html.ui-calm .tab.on .cnt { background: none; color: var(--muted); padding: 0; font-weight: 500; }
+html.ui-calm .tab .cnt.hot { background: none; color: var(--bad); font-weight: 500; }
+html.ui-calm .seg { border-radius: 10px; }
+html.ui-calm .seg button { border-radius: 8px; font-weight: 500; }
+html.ui-calm .seg button.on { box-shadow: none; border: 1px solid var(--line); }
+html.ui-calm .seg button .cnt, html.ui-calm .seg button.on .cnt { background: none; color: var(--muted); padding: 0; }
+
+/* ---------- таблицы и списки ---------- */
+html.ui-calm .tbl th { font-weight: 500; letter-spacing: 0; background: var(--surface); }
+html.ui-calm .list-row { padding: 12px 0; }
+html.ui-calm .list-row .lr-main b { font-weight: 500; }
+html.ui-calm .money { font-weight: 500; }
+html.ui-calm .thumb { border-radius: 8px; }
+
+/* ---------- графики: тонкие линии, без заливки и «таблеток» ---------- */
+html.ui-calm .chart[data-chart="area"] svg > path:not(.ln) { display: none; }
+html.ui-calm .chart .ln { stroke-width: 1.5; stroke: var(--s1); }
+html.ui-calm .chart .grid-l { stroke: var(--line); }
+html.ui-calm .chart-tip { border-radius: 8px; }
+html.ui-calm .chart-tip b { font-weight: 600; }
+html.ui-calm .donut-wrap svg circle { stroke-width: 12; }
+html.ui-calm .donut-center b { font-weight: 600; }
+html.ui-calm .legend i { width: 8px; height: 8px; border-radius: 50%; }
+html.ui-calm .bar { height: 4px; border-radius: 1px; }
+html.ui-calm .bar > i { border-radius: 1px; }
+html.ui-calm .hbar .bar { height: 4px; margin-bottom: 12px; }
+html.ui-calm .hbar .bar > i { background: var(--s1) !important; }
+html.ui-calm .hbar .hb-name { font-weight: 400; }
+html.ui-calm .hbar .hb-val { font-weight: 500; }
+
+/* ---------- фильтр даты ---------- */
+html.ui-calm .dfp { border-radius: 10px; }
+html.ui-calm .dfp-presets button { font-weight: 500; border-radius: 8px; }
+html.ui-calm .dfp .cal-days button { border-radius: 8px; }
+
+/* ---------- телефон: нижнее меню — в тон интерфейса ---------- */
+@media (max-width: 1100px) {
+  html.ui-calm .bnav { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 16px -8px rgba(0, 0, 0, .12); }
+  html.ui-calm .bnav button { color: var(--muted); border-radius: 8px; font-weight: 500; }
+  html.ui-calm .bnav button.on { color: var(--text); background: var(--surface-3); }
+  html.ui-calm .bnav button.on .ic { color: var(--brand-ink); }
+  html.ui-calm .bnav button .b-dot { background: var(--bad-dot); }
+}

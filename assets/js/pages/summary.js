@@ -5,10 +5,21 @@
   const st = () => W.st('summary', { df: { p: 'today' } });
 
   const greet = () => { const h = new Date().getHours(); return h < 5 ? t('Доброй ночи') : h < 12 ? t('Доброе утро') : h < 18 ? t('Добрый день') : t('Добрый вечер'); };
+  // спокойный вид (пилот, calm.css): заголовок — период, тренд — сухим текстом
+  const calm = () => document.documentElement.classList.contains('ui-calm');
   const delta = (cur, prev) => {
     if (!prev) return '';
     const p = Math.round((cur - prev) / prev * 100);
+    if (calm()) return `<span class="trend ${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '+' : '−'}${Math.abs(p)}%</span> ${t('к прошлому периоду')}`;
     return `<span class="delta ${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}%</span>`;
+  };
+  // «29 окт 2026», «Октябрь 2026», «1 окт – 29 окт 2026»; год приглушён
+  const periodTitle = (from, to) => {
+    const yr = y => `<span class="yr">${y}</span>`, y1 = from.slice(0, 4), y2 = to.slice(0, 4);
+    if (from === to) return `${W.dayShort(from)} ${yr(y1)}`;
+    const lastDay = W.isoDay(new Date(+y2, +to.slice(5, 7), 0));
+    if (from.slice(0, 7) === to.slice(0, 7) && from.slice(8) === '01' && (to === lastDay || to === W.today())) return `${t(W.MONTHS[+from.slice(5, 7) - 1])} ${yr(y1)}`;
+    return y1 === y2 ? `${W.dayShort(from)} – ${W.dayShort(to)} ${yr(y2)}` : `${W.dayShort(from)} ${yr(y1)} – ${W.dayShort(to)} ${yr(y2)}`;
   };
   // подпись главной карточки под выбранный период
   const heroLabel = (df, from, to) => ({
@@ -39,7 +50,8 @@
       const toLabel = to === today ? t('сегодня') : W.dayShort(to);
 
       const kpis = [
-        W.kpi({ label: heroLabel(S.df, from, to), value: W.moneyKpi(sum), icon: 'trendUp', hero: true, link: 'sales?tab=history', foot: `${delta(sum, prevSum)} ${t('{n} чеков', { n: sales.length })}` }),
+        W.kpi({ label: heroLabel(S.df, from, to), value: W.moneyKpi(sum), icon: 'trendUp', hero: true, link: 'sales?tab=history',
+          foot: calm() ? [t('{n} чеков', { n: sales.length }), delta(sum, prevSum)].filter(Boolean).join(' · ') : `${delta(sum, prevSum)} ${t('{n} чеков', { n: sales.length })}` }),
         W.kpi({ label: t('Продажи за {m}', { m: W.t(W.MONTHS[+mon.slice(5) - 1]).toLowerCase() }), value: W.moneyKpi(W.sum(monSales, s => W.saleNet(s))), icon: 'calendar', link: 'sales?tab=history', foot: t('{n} продаж', { n: monSales.length }) }),
         W.kpi({ label: t('Количество продаж'), value: W.fmtNum(sales.length), small: t('шт'), icon: 'cart', c: 'c-vio', foot: W.dfLabel(S.df) }),
         W.kpi({ label: t('Средний чек'), value: W.moneyKpi(sales.length ? sum / sales.length : 0), icon: 'receipt', c: 'c-ok', foot: t('по продажам периода') }),
@@ -82,9 +94,10 @@
 
       return `
       <div class="page-head"><div>
-        <div class="h-eyebrow"><i></i>${greet()}, ${esc(me.name.split(' ')[1] || me.name)}</div>
+        ${calm() ? `<div class="h-eyebrow">${t('Сводка')} · ${esc(W.db.settings.company.name)}</div><h1>${periodTitle(from, to)}</h1>`
+          : `<div class="h-eyebrow"><i></i>${greet()}, ${esc(me.name.split(' ')[1] || me.name)}</div>
         <h1>${t('Сводка')}</h1>
-        <div class="sub">${esc(W.db.settings.company.name)}</div></div>
+        <div class="sub">${esc(W.db.settings.company.name)}</div>`}</div>
         <div class="actions">
           ${W.dateFilter(S.df, 'df')}
           ${W.can('reports') ? `<button class="btn" data-go="reports">${I('report')}${t('Отчёты')}</button>` : ''}
