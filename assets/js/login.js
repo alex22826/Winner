@@ -32,7 +32,7 @@
           <button class="btn paint lg block" type="submit">${t('Войти')}${I('chevR')}</button>
           <div class="auth-help">${I('key', 'ic-sm')}<span>${t('Забыли пароль? Обратитесь к директору — он выдаст новый в разделе «Сотрудники».')}</span></div>
         </form>
-        <div class="auth-ok"><div class="ring">${I('check')}</div><h2 style="font-size:24px">${t('Добро пожаловать!')}</h2><p class="muted mt-8 ok-name"></p></div>
+        <div class="auth-ok"><div class="ring">${I('check')}</div><h2 style="font-size:24px">${t('Добро пожаловать')}</h2><p class="muted mt-8 ok-name"></p></div>
       </div>
       <div class="auth-foot">${t('Данные защищены паролем · версия {v}', { v: W.APP_VERSION })}</div>`;
   const state = { login: '', pass: '' };
@@ -114,6 +114,8 @@ void main(){
   const stopGL = () => { cancelAnimationFrame(raf); raf = 0; };
   const startGL = (canvas) => {
     cv = canvas;
+    // спокойный вид: живого фона нет — панель нейтральная, видеокарта не нагружается
+    if (document.documentElement.classList.contains('ui-calm')) { cv.remove(); gl = null; return; }
     gl = cv.getContext('webgl', { antialias: false, alpha: false, preserveDrawingBuffer: false });
     if (!gl) { cv.parentNode.classList.add('no-gl'); cv.remove(); return; }
     const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };

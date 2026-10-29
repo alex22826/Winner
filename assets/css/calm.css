@@ -1,6 +1,6 @@
 /* =========================================================================
-   Спокойный вид («calm») — пилот на Сводке и в меню.
-   Включается классом html.ui-calm (app.html?ui=calm, выключить — ?ui=classic).
+   Спокойный вид («calm») — основной вид программы.
+   Включён классом html.ui-calm; прежний вид — ссылкой ?ui=classic (обратно — ?ui=calm).
    Логику не трогает: только цвет, шрифт, отступы, бейджи, графики, радиусы и тени.
    Правила вида:
    - фон нейтральный, карточки на тон светлее, граница 1px, теней нет;
@@ -233,4 +233,216 @@ html.ui-calm .dfp .cal-days button { border-radius: 8px; }
   html.ui-calm .bnav button.on { color: var(--text); background: var(--surface-3); }
   html.ui-calm .bnav button.on .ic { color: var(--brand-ink); }
   html.ui-calm .bnav button .b-dot { background: var(--bad-dot); }
+}
+
+/* =========================================================================
+   Остальные разделы: формы, окна, таблицы, всплывающие слои
+   ========================================================================= */
+html.ui-calm .btn.sm { border-radius: 8px; }
+html.ui-calm .btn.lg { border-radius: 10px; }
+html.ui-calm .btn.ok { background: #2f7d5b; }
+html.ui-calm .btn.ok:hover { background: #276b4e; }
+html.ui-calm .btn.danger.solid { background: #b3333a; }
+html.ui-calm .act button { border-radius: 8px; }
+
+html.ui-calm .field > label, html.ui-calm .label { font-weight: 500; }
+html.ui-calm .inp { border-radius: 10px; }
+html.ui-calm .inp.sm { border-radius: 8px; }
+html.ui-calm .inp:hover { border-color: var(--line-2); }
+html.ui-calm .form-grid { gap: 16px; }
+html.ui-calm .form-sec { font-weight: 600; margin: 8px 0 0; }
+html.ui-calm .chip-pick span { border-radius: 8px; font-weight: 500; }
+html.ui-calm .toolbar { gap: 8px; margin-bottom: 16px; }
+html.ui-calm .tag { border-radius: 6px; font-weight: 500; }
+html.ui-calm .tag.brand { background: var(--surface-3); color: var(--text-2); } /* роли и разделы — без акцента */
+/* выбранный язык и тема в профиле — рамкой, без свечения */
+html.ui-calm .kpi.link[style*="--ring"] { box-shadow: none !important; }
+
+html.ui-calm .tbl th { padding: 12px; }
+html.ui-calm .tbl td { padding: 12px; }
+html.ui-calm .tbl th:first-child, html.ui-calm .tbl td:first-child, html.ui-calm .tbl tfoot td:first-child { padding-left: 20px; }
+html.ui-calm .tbl th:last-child, html.ui-calm .tbl td:last-child { padding-right: 20px; }
+html.ui-calm .tbl tfoot td { font-weight: 600; padding: 12px; }
+html.ui-calm .tbl tr.row-warn td { background: color-mix(in srgb, var(--warn-bg) 40%, transparent); }
+html.ui-calm .tbl tr.row-bad td { background: color-mix(in srgb, var(--bad-bg) 40%, transparent); }
+html.ui-calm .cell-main { font-weight: 500; }
+html.ui-calm .tbl-foot { padding: 12px 20px; }
+
+html.ui-calm .empty { padding: 48px 24px; }
+html.ui-calm .empty .em-ic { width: 48px; height: 48px; border-radius: 10px; }
+html.ui-calm .empty .em-ic::after { display: none; }
+html.ui-calm .empty .em-ic .ic { width: 24px; height: 24px; }
+html.ui-calm .empty b { font-weight: 500; }
+
+/* окна */
+html.ui-calm .overlay, html.ui-calm .dfp-back, html.ui-calm .scrim { background: rgba(0, 0, 0, .4); }
+html.ui-calm .modal { border-radius: 10px; }
+html.ui-calm .modal-head { padding: 20px 24px 16px; }
+html.ui-calm .modal-head .m-ic, html.ui-calm .modal-head .m-ic.ok { width: 40px; height: 40px; border-radius: 10px; background: var(--surface-3); color: var(--text-2); }
+html.ui-calm .modal-head .m-ic.bad { background: var(--surface-3); color: var(--bad); }
+html.ui-calm .modal-head h3 { font-weight: 600; }
+html.ui-calm .modal-body { padding: 8px 24px 24px; }
+html.ui-calm .modal-foot { padding: 16px 24px; background: var(--surface); gap: 8px; }
+html.ui-calm .drawer .modal-body { padding-top: 8px; }
+
+/* всплывающие меню, выпадающие списки, календарь */
+html.ui-calm .pop { border-radius: 10px; }
+html.ui-calm .pop-title { font-weight: 600; }
+html.ui-calm .pop-item { border-radius: 8px; }
+html.ui-calm .pop-item .pi-ic, html.ui-calm .pop-item .pi-ic.warn, html.ui-calm .pop-item .pi-ic.bad, html.ui-calm .pop-item .pi-ic.info { border-radius: 8px; background: var(--surface-3); }
+html.ui-calm .pop-item .pi-ic.warn { color: var(--warn); }
+html.ui-calm .pop-item .pi-ic.bad { color: var(--bad); }
+html.ui-calm .pop-item .pi-ic.info { color: var(--info); }
+html.ui-calm .dd-menu { border-radius: 10px; }
+html.ui-calm .dd-opt { border-radius: 8px; }
+html.ui-calm .dd-opt.sel { font-weight: 500; }
+html.ui-calm .cal { border-radius: 10px; }
+html.ui-calm .cal-title { font-weight: 600; border-radius: 8px; }
+html.ui-calm .cal-nav { border-radius: 8px; }
+html.ui-calm .cal-wd span { font-weight: 500; }
+html.ui-calm .cal-days button { border-radius: 8px; font-weight: 400; }
+html.ui-calm .cal-days button.today { font-weight: 600; }
+html.ui-calm .cal-days button.on { box-shadow: none; }
+html.ui-calm .cal-months button { border-radius: 8px; font-weight: 500; }
+html.ui-calm .cal-foot button { font-weight: 500; border-radius: 8px; }
+html.ui-calm .dfp-sel { font-weight: 500; }
+
+/* уведомления, панель сохранения, баннер обновления — нейтральный тёмный слой в обеих темах */
+html.ui-calm .toast, html.ui-calm .savebar, html.ui-calm .update-bar { background: #1d1d21; color: #f1f1f3; border: 1px solid rgba(255, 255, 255, .06); border-radius: 10px; }
+html.ui-calm .toast .t-ic, html.ui-calm .toast.err .t-ic, html.ui-calm .toast.warn .t-ic, html.ui-calm .toast.info .t-ic { background: none; width: 20px; height: 20px; }
+html.ui-calm .toast .t-ic { color: #6cc59c; }
+html.ui-calm .toast.err .t-ic { color: #f08a8f; }
+html.ui-calm .toast.warn .t-ic { color: #e0b072; }
+html.ui-calm .toast.info .t-ic { color: #a3b8ff; }
+html.ui-calm .savebar .ic { color: #e0b072; }
+html.ui-calm .cmdk .grp { font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+
+/* подсказки-плашки внутри разделов (порог, потребность, ждут подтверждения) — без цветной заливки */
+html.ui-calm .card[style*="--warn-bg"], html.ui-calm .card[style*="--info-bg"] { background: var(--surface) !important; border-color: var(--line) !important; }
+html.ui-calm .card[style*="--warn-bg"] > .ic:first-child { color: var(--warn); }
+html.ui-calm .card[style*="--info-bg"] > .ic:first-child { color: var(--info); }
+html.ui-calm .card[style*="--warn-bg"] .kpi-ic[style] { background: none !important; color: var(--warn); }
+
+/* списки и мелочи */
+html.ui-calm .list-row.click { border-radius: 8px; }
+html.ui-calm .dot-s { width: 8px; height: 8px; border-radius: 50%; }
+html.ui-calm .chart .area { display: none; }
+html.ui-calm .pw-meter i { border-radius: 2px; height: 4px; }
+
+/* отгрузки: канбан и стадии заказа */
+html.ui-calm .kanban { gap: 16px; }
+html.ui-calm .kcol { border-radius: 10px; }
+html.ui-calm .kcol-head { font-weight: 600; }
+html.ui-calm .kcol-head .cnt { font-weight: 400; }
+html.ui-calm .kcard { border-radius: 8px; box-shadow: none; }
+html.ui-calm .kcard:hover { transform: none; box-shadow: none; border-color: var(--line-2); }
+html.ui-calm .kcard b { font-weight: 500; }
+html.ui-calm .step { font-weight: 500; }
+html.ui-calm .step::before { height: 2px; top: 14px; }
+html.ui-calm .step .st-dot { border-width: 1px; }
+html.ui-calm .step.cur .st-dot { box-shadow: none; }
+
+/* каталог */
+html.ui-calm .cat-chip { border-radius: 8px; font-weight: 500; }
+html.ui-calm .pcard { border-radius: 10px; box-shadow: none; }
+html.ui-calm .pcard:hover { transform: none; box-shadow: none; border-color: var(--line-2); }
+html.ui-calm .pcard .pname { font-weight: 500; }
+html.ui-calm .pcard .pprice { font-weight: 600; }
+html.ui-calm .pcard .pstock { border-top-style: solid; }
+/* отметки на фото — текст с цветной точкой на светлой подложке, без яркой заливки */
+html.ui-calm .flag, html.ui-calm .flag.nostock, html.ui-calm .flag.noship, html.ui-calm .flag.low { background: var(--surface); color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; font-weight: 500; gap: 6px; }
+html.ui-calm .flag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex: none; }
+html.ui-calm .flag.nostock::before { background: var(--bad-dot); }
+html.ui-calm .flag.noship::before, html.ui-calm .flag.low::before { background: var(--warn-dot); }
+html.ui-calm .split { gap: 16px; }
+html.ui-calm .pick { border-radius: 8px; }
+html.ui-calm .pick.on { background: var(--surface-3); }
+html.ui-calm .pick b { font-weight: 500; }
+
+/* сотрудники, профиль, настройки */
+html.ui-calm .person { padding: 20px; border-radius: 10px; box-shadow: none; }
+html.ui-calm .person .p-top b { font-weight: 500; }
+html.ui-calm .person .p-meta dd { font-weight: 500; }
+html.ui-calm .profile-hero { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 10px; box-shadow: none; padding: 24px; gap: 24px; }
+html.ui-calm .profile-hero .avatar { box-shadow: none; background: var(--surface-3); color: var(--text-2); }
+html.ui-calm .profile-hero h2 { font-weight: 600; }
+html.ui-calm .profile-hero .ph-sub { opacity: 1; color: var(--muted); }
+html.ui-calm .profile-hero .tags .tag { background: var(--surface-3); color: var(--text-2); }
+html.ui-calm .profile-hero .ph-stat { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; }
+html.ui-calm .profile-hero .ph-stat b { font-weight: 600; }
+html.ui-calm .profile-hero .ph-stat span { opacity: 1; color: var(--muted); }
+html.ui-calm .role-perm { border-radius: 10px; }
+html.ui-calm .set-row h4 { font-weight: 600; }
+
+/* документ на экране: без цветной полосы и капса */
+html.ui-calm .doc { border-radius: 10px; }
+html.ui-calm .doc-stripe { display: none; }
+html.ui-calm .doc .doc-head { border-bottom-width: 2px; }
+html.ui-calm .doc .parties b { text-transform: none; letter-spacing: 0; font-size: 12px; }
+
+/* планшет: точка уведомления в «рельсе» */
+@media (min-width: 721px) and (max-width: 1100px) {
+  html.ui-calm .shell:not(.rail-open) .nav-item.has-dot::after { background: var(--bad-dot); box-shadow: 0 0 0 2px var(--surface); }
+  html.ui-calm .shell.rail-open .side { box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .25); }
+}
+/* телефон: поля поменьше, радиусы те же */
+@media (max-width: 720px) {
+  html.ui-calm .kpis { gap: 8px; }
+  html.ui-calm .kpi { padding: 16px; border-radius: 10px; }
+  html.ui-calm .kpi-val { font-size: 20px; margin-top: 8px; }
+  html.ui-calm .kpi.hero .kpi-val { font-size: 24px; }
+  html.ui-calm .card { border-radius: 10px; }
+  html.ui-calm .card-head { padding: 16px 16px 0; min-height: 48px; }
+  html.ui-calm .card-body { padding: 16px; }
+  html.ui-calm .card-pad { padding: 16px; }
+  html.ui-calm .page-head { margin: 8px 0 16px; }
+  html.ui-calm .page-head h1 { font-size: 24px; }
+  html.ui-calm .modal, html.ui-calm .modal.sm, html.ui-calm .modal.lg, html.ui-calm .modal.xl, html.ui-calm .drawer { border-radius: 12px 12px 0 0; }
+  html.ui-calm .modal-head { padding: 16px 16px 12px; }
+  html.ui-calm .modal-body { padding: 4px 16px 16px; }
+  html.ui-calm .modal-foot { padding: 12px 16px calc(12px + var(--safe-b)); }
+  html.ui-calm .dfp { border-radius: 12px; }
+  html.ui-calm .pcard { border-radius: 10px; }
+  html.ui-calm .sale-row, html.ui-calm .line-row { border-radius: 10px; }
+  html.ui-calm .tbl.stack tr { padding: 16px; }
+  html.ui-calm .tbl.stack td.w-act { border-top-style: solid; }
+  html.ui-calm .tbl.stack td.w-act .act button { border-radius: 8px; }
+  html.ui-calm .crumbs b { font-weight: 600; }
+}
+
+/* =========================================================================
+   Страница входа
+   ========================================================================= */
+html.ui-calm .art, html.ui-calm .art.no-gl { background: var(--surface); color: var(--text); border-right: 1px solid var(--line); }
+html.ui-calm .art canvas, html.ui-calm .art::after { display: none; }
+html.ui-calm .art-brand b { font-weight: 700; letter-spacing: .04em; color: var(--text); }
+html.ui-calm .art-brand span { opacity: 1; color: var(--muted); letter-spacing: 0; }
+html.ui-calm .art-copy .kicker { padding: 0; background: none; border: 0; border-radius: 0; color: var(--muted); font-weight: 400; letter-spacing: 0; font-size: 13px; }
+html.ui-calm .art-copy .kicker i { background: var(--ok-dot); box-shadow: none; width: 6px; height: 6px; }
+html.ui-calm .art-copy h1 { font-weight: 600; letter-spacing: -.02em; line-height: 1.1; text-shadow: none; }
+html.ui-calm .art-copy h1 em { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--muted); }
+html.ui-calm .art-copy p { opacity: 1; color: var(--text-2); }
+html.ui-calm .art-feats { gap: 16px; margin-top: 32px; }
+html.ui-calm .art-feat { padding: 16px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+html.ui-calm .art-feat .ic { color: var(--muted); width: 20px; height: 20px; }
+html.ui-calm .art-feat b { font-weight: 500; margin-top: 8px; }
+html.ui-calm .art-feat span { opacity: 1; color: var(--muted); }
+html.ui-calm .art-foot { opacity: 1; color: var(--muted); margin-top: 24px; }
+html.ui-calm .art-tools .lang-switch { background: var(--surface); border-color: var(--line); }
+html.ui-calm .art-tools .lang-switch button { color: var(--muted); }
+html.ui-calm .art-tools .lang-switch button.on { color: var(--text); }
+html.ui-calm .art-tools .icon-btn { background: var(--surface); border-color: var(--line); color: var(--text-2); }
+html.ui-calm .auth-box h2 { font-weight: 600; letter-spacing: -.02em; }
+html.ui-calm .auth-box .lead { margin: 8px 0 24px; }
+html.ui-calm .auth-box .field + .field { margin-top: 16px; }
+html.ui-calm .auth-box .inp { height: 48px; border-radius: 10px; }
+html.ui-calm .auth-box .btn.lg { height: 48px; margin-top: 24px; border-radius: 10px; }
+html.ui-calm .eye { border-radius: 8px; }
+html.ui-calm .auth-err { border-radius: 10px; }
+html.ui-calm .auth-help { border-radius: 10px; border-style: solid; }
+html.ui-calm .auth-ok .ring { width: 64px; height: 64px; border-radius: 10px; background: var(--surface-3); color: var(--ok); }
+@media (max-width: 960px) {
+  html.ui-calm .art { min-height: 0; border-radius: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  html.ui-calm .art-copy { margin-top: 24px; }
+  html.ui-calm .art-copy h1 { font-size: 28px; }
 }
