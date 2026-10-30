@@ -173,7 +173,11 @@
     ship(s3, at(0, '09:10'));
 
     /* ---------- задание на выпуск в работе — чтобы считалась потребность в сырье ---------- */
-    db.prodOrders.push({ id: id('po'), no: 1, at: at(0, '08:30'), p: 'p4', qty: 60, status: 'work', startedAt: at(0, '08:40'), note: 'Нет в наличии — срочный выпуск', by: 'u_tex' });
+    // сырьё по калькуляции списано при запуске
+    const po = { id: id('po'), no: 1, at: at(0, '08:30'), p: 'p4', qty: 60, status: 'work', startedAt: at(0, '08:40'), note: 'Нет в наличии — срочный выпуск', by: 'u_tex' };
+    recipes.p4.forEach(r => mv('m', r.m, 'raw', W.round(-r.qty * po.qty, 3), 'consume', po.id, po.startedAt, 'u_tex'));
+    po.cost = W.round(W.sum(recipes.p4, r => r.qty * materials.find(x => x.id === r.m).price) * po.qty);
+    db.prodOrders.push(po);
 
     /* ---------- 2 прихода сырья: один оплачен, второй частично — долг поставщику ---------- */
     const purchase = (no, a, sup, items, paid, note) => {

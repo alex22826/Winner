@@ -6,13 +6,15 @@
 
   /* ---------- новый приход ---------- */
   W.purchaseForm = (prefill) => {
-    const mOpts = W.db.materials.map(m => [m.id, m.name, `${W.money(m.price)} / ${t(m.unit)}`]);
+    // в приходе по умолчанию — цена последней закупки (в справочнике хранится средняя)
+    const lastPrice = mm => (mm && (mm.lastPrice || mm.price)) || 0;
+    const mOpts = W.db.materials.map(m => [m.id, m.name, `${W.money(lastPrice(m))} / ${t(m.unit)}`]);
     const sups = W.db.suppliers.map(s => [s.id, s.name, s.inn]);
     const firstSup = prefill && prefill.length ? (W.material(prefill[0].m) || {}).sup : '';
     const row = (r = {}) => `<div class="line-row pu-row" style="grid-template-columns:minmax(0,1fr) 100px 130px 36px">
       <div style="min-width:0"><select class="inp" data-k="m">${W.opts(mOpts, r.m || '')}</select><div class="hint pu-hint" style="font-size:12px;margin-top:4px"></div></div>
       <input class="inp num" data-k="qty" inputmode="decimal" value="${r.qty || ''}" placeholder="0" aria-label="${t('Кол-во')}">
-      <input class="inp num" data-k="price" data-money inputmode="decimal" value="${W.fmtNum(r.price || (W.material(r.m) || W.db.materials[0]).price)}" aria-label="${t('Цена')}">
+      <input class="inp num" data-k="price" data-money inputmode="decimal" value="${W.fmtNum(r.price || lastPrice(W.material(r.m) || W.db.materials[0]))}" aria-label="${t('Цена')}">
       <button type="button" class="btn icon ghost" data-m="del" title="${t('Удалить')}">${I('x')}</button></div>`;
     const m = W.modal({
       size: 'lg', title: t('Новый приход'), sub: t('Поступление сырья, тары и материалов на склад сырья'), icon: 'box', iconCls: 'ok',
@@ -33,7 +35,7 @@
         add: () => { m.el.querySelector('.pu-rows').insertAdjacentHTML('beforeend', row()); recalc(); },
         del: b => { if (m.el.querySelectorAll('.pu-row').length > 1) b.closest('.pu-row').remove(); recalc(); },
         input: el => { if (el.name === 'paid') paidTouched = true; recalc(); },
-        change: el => { if (el.dataset.k === 'm') { const mm = W.material(el.value); el.closest('.pu-row').querySelector('[data-k=price]').value = W.fmtNum(mm.price); } recalc(); },
+        change: el => { if (el.dataset.k === 'm') { const mm = W.material(el.value); el.closest('.pu-row').querySelector('[data-k=price]').value = W.fmtNum(lastPrice(mm)); } recalc(); },
         save: () => {
           const d = W.form(m.el);
           if (!d.sup) { W.toast(t('Выберите поставщика'), 'warn'); return m.el.querySelector('[name=sup]').focus(); }

@@ -4,7 +4,7 @@
    ========================================================================= */
 (function () {
   const W = window.W = window.W || {};
-  W.APP_VERSION = '2026-10-30.1';
+  W.APP_VERSION = '2026-10-30.2';
   const DB_KEY = 'wn.db.v1';
   W.DB_VERSION = 3;
 
@@ -73,6 +73,15 @@
     if (!d || d.v !== W.DB_VERSION) { d = W.seed(); W.db = d; W.save(true); }
     W.db = d;
     if (!d.writeoffs) { d.writeoffs = []; W.save(true); } // списания брака появились позже
+    // 2026-10-30: сырьё списывается при запуске. Запущенные раньше выпуски без списания:
+    // сырья хватает — списываем на дату запуска, не хватает — возвращаем в «Запланирован»
+    const oldWork = d.prodOrders.filter(o => o.status === 'work' && !d.moves.some(m => m.kind === 'consume' && m.ref === o.id));
+    oldWork.forEach(o => {
+      if (W.prodShortage(o).length) { o.status = 'plan'; delete o.startedAt; return; }
+      (d.recipes[o.p] || []).forEach(r => W.move('m', r.m, 'raw', -r.qty * o.qty, 'consume', o.id, '', o.startedAt));
+      o.cost = W.round(W.unitCost(o.p) * o.qty);
+    });
+    if (oldWork.length) W.save(true);
     // 2026-10-23: компания переименована, сохранённые данные обновляем без сброса
     const co = d.settings.company;
     if (co.name === 'ООО «EAST COLOR»') { co.name = '"SAVER PAINTS" MCHJ'; if (co.email === 'info@eastcolor.uz') co.email = 'info@saverpaints.uz'; W.save(true); }
@@ -261,8 +270,8 @@
   W.rawNeeds = () => memo('rawNeeds', () => {
     const need = {}, planned = {};
     const add = (pid, qty) => (W.db.recipes[pid] || []).forEach(r => { need[r.m] = (need[r.m] || 0) + r.qty * qty; });
-    // 1) незавершённые производственные задания
-    W.db.prodOrders.filter(o => o.status !== 'done').forEach(o => { add(o.p, o.qty); planned[o.p] = (planned[o.p] || 0) + o.qty; });
+    // 1) запланированные выпуски (у запущенных сырьё уже списано, их продукция ожидается на складе)
+    W.db.prodOrders.filter(o => o.status === 'plan' || o.status === 'work').forEach(o => { if (o.status === 'plan') add(o.p, o.qty); planned[o.p] = (planned[o.p] || 0) + o.qty; });
     // 2) нехватка готовой продукции под открытые заказы клиентов
     W.db.products.forEach(p => {
       const short = W.reserved(p.id) - W.stock('p', p.id) - (planned[p.id] || 0);
@@ -435,7 +444,12 @@
     const p = { id: W.uid('pu'), no: W.nextNo('purchase'), at: d.at || W.now(), sup: d.sup, items: d.items.map(i => ({ m: i.m, qty: +i.qty, price: +i.price })), note: d.note || '', method: d.method || null, by: meId() };
     p.total = W.round(W.sum(p.items, i => i.qty * i.price));
     W.db.purchases.push(p);
-    p.items.forEach(i => { W.move('m', i.m, 'raw', i.qty, 'purchase', p.id, '', p.at); const m = W.material(i.m); if (m && i.price) m.price = i.price; });
+    // цена сырья — средневзвешенная по остатку (ответ заказчика); цена последнего прихода хранится отдельно
+    p.items.forEach(i => {
+      const m = W.material(i.m);
+      if (m && i.price) { const have = Math.max(0, W.stock('m', i.m)); m.price = have && m.price ? W.round((have * m.price + i.qty * i.price) / (have + i.qty)) : i.price; m.lastPrice = i.price; }
+      W.move('m', i.m, 'raw', i.qty, 'purchase', p.id, '', p.at);
+    });
     if (d.method && d.paid > 0) W.moneyMove({ method: d.method, dir: -1, amount: Math.min(d.paid, p.total), at: p.at, kind: 'purchase', ref: p.id, note: W.t('Оплата поставщику, приход №{n}', { n: W.no(p.no) }), party: (W.supplier(d.sup) || {}).name, num: W.no(p.no) });
     return p;
   };
@@ -446,15 +460,29 @@
     return o;
   };
   W.prodShortage = o => (W.db.recipes[o.p] || []).map(r => ({ m: W.material(r.m), need: W.round(r.qty * o.qty, 3), have: W.stock('m', r.m) })).filter(x => x.m && x.have < x.need);
-  W.startProd = o => { o.status = 'work'; o.startedAt = W.now(); };
-  W.finishProd = o => {
+  // сырьё списывается по калькуляции при запуске (ответ заказчика): не хватает — запустить нельзя
+  W.startProd = o => {
     const short = W.prodShortage(o);
     if (short.length) return { short };
     (W.db.recipes[o.p] || []).forEach(r => W.move('m', r.m, 'raw', -r.qty * o.qty, 'consume', o.id));
-    W.move('p', o.p, W.FG, o.qty, 'produce', o.id);
-    o.status = 'done'; o.doneAt = W.now(); o.cost = W.round(W.unitCost(o.p) * o.qty);
+    o.status = 'work'; o.startedAt = W.now(); o.cost = W.round(W.unitCost(o.p) * o.qty);
     return true;
   };
+  // при завершении вводится фактический выпуск; разница с заказом — потери
+  W.finishProd = (o, fact = o.qty) => {
+    o.fact = Math.max(0, Math.round(fact));
+    if (o.fact) W.move('p', o.p, W.FG, o.fact, 'produce', o.id);
+    o.status = 'done'; o.doneAt = W.now();
+    if (o.cost == null) o.cost = W.round(W.unitCost(o.p) * o.qty);
+    return true;
+  };
+  // отмена: у запущенного выпуска сырьё возвращается на остатки
+  W.cancelProd = o => {
+    if (o.status === 'work') W.db.moves.filter(m => m.kind === 'consume' && m.ref === o.id).forEach(m => W.move('m', m.item, m.wh, -m.qty, 'unconsume', o.id));
+    o.status = 'cancel'; o.cancelledAt = W.now(); o.cancelledBy = meId();
+  };
+  W.prodOut = o => o.fact ?? o.qty;           // сколько штук пришло на склад
+  W.prodLoss = o => o.status === 'done' ? Math.max(0, o.qty - W.prodOut(o)) : 0;
 
   /* долги поставщикам: сумма прихода минус оплаты по нему (касса и банк) */
   W.purchasePaid = p => W.round(W.sum(W.db.bank.filter(b => b.ref === p.id && b.dir < 0), b => b.amount) + W.sum(W.db.cash.filter(c => c.ref === p.id && c.dir < 0), c => c.amount));

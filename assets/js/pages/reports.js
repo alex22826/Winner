@@ -62,10 +62,10 @@
     } },
     { id: 'production', icon: 'factory', page: 'production', title: W.N('Выпуск продукции'), desc: W.N('Сколько и чего выпущено, себестоимость'), build: (f, to) => {
       const agg = {};
-      W.db.prodOrders.filter(o => o.status === 'done' && W.inRange(o.doneAt || o.at, f, to)).forEach(o => { const a = agg[o.p] || (agg[o.p] = { n: 0, q: 0, c: 0 }); a.n++; a.q += o.qty; a.c += o.cost || 0; });
+      W.db.prodOrders.filter(o => o.status === 'done' && W.inRange(o.doneAt || o.at, f, to)).forEach(o => { const a = agg[o.p] || (agg[o.p] = { n: 0, q: 0, l: 0, c: 0 }); a.n++; a.q += W.prodOut(o); a.l += W.prodLoss(o); a.c += o.cost || 0; });
       const rows = Object.entries(agg).sort((a, b) => b[1].q - a[1].q);
-      return { head: [t('Продукция'), t('Документов'), t('Выпущено, шт'), t('Себестоимость')], rows: rows.map(([p, a]) => [(W.product(p) || {}).name, a.n, Q(a.q), M(a.c)]),
-        foot: [t('Итого'), W.sum(rows, r => r[1].n), Q(W.sum(rows, r => r[1].q)), M(W.sum(rows, r => r[1].c))] };
+      return { head: [t('Продукция'), t('Документов'), t('Выпущено, шт'), t('Потери, шт'), t('Себестоимость')], rows: rows.map(([p, a]) => [(W.product(p) || {}).name, a.n, Q(a.q), Q(a.l), M(a.c)]),
+        foot: [t('Итого'), W.sum(rows, r => r[1].n), Q(W.sum(rows, r => r[1].q)), Q(W.sum(rows, r => r[1].l)), M(W.sum(rows, r => r[1].c))] };
     } },
     { id: 'writeoffs', icon: 'trash', page: 'warehouse', title: W.N('Списание брака'), desc: W.N('Что списано, по какой причине и на какую сумму'), build: (f, to) => {
       const rows = W.db.writeoffs.filter(w => W.inRange(w.at, f, to)).slice().reverse();

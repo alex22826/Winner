@@ -3,7 +3,7 @@
   const W = window.W, I = W.icon, esc = W.esc;
   const t = (s, v) => W.t(s, v);
   const st = () => W.st('warehouse', { kind: 'p', wh: '', period: 'month', q: '', mkind: '', page: 1 });
-  const MK = { init: W.N('Остаток на начало'), purchase: W.N('Приход от поставщика'), produce: W.N('Выпуск продукции'), consume: W.N('Списание в производство'), sale: W.N('Отгрузка клиенту'), return: W.N('Возврат от клиента'), writeoff: W.N('Списание брака'), adjust: W.N('Инвентаризация') };
+  const MK = { init: W.N('Остаток на начало'), purchase: W.N('Приход от поставщика'), produce: W.N('Выпуск продукции'), consume: W.N('Списание в производство'), unconsume: W.N('Возврат сырья: выпуск отменён'), sale: W.N('Отгрузка клиенту'), return: W.N('Возврат от клиента'), writeoff: W.N('Списание брака'), adjust: W.N('Инвентаризация') };
   const REASONS = [W.N('Брак производства'), W.N('Повреждение при хранении'), W.N('Повреждение при перевозке'), W.N('Истёк срок годности'), W.N('Другое')];
   const itemName = m => ((m.t === 'p' ? W.product(m.item) : W.material(m.item)) || {}).name || '—';
   const unit = m => m.t === 'p' ? t('шт') : t((W.material(m.item) || {}).unit || '');

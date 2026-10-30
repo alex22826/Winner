@@ -4,7 +4,8 @@
   const W = window.W, I = W.icon, esc = W.esc;
   const t = (s, v) => W.t(s, v);
   const st = () => W.st('production', { docs: 'all', part: 'raw', calc: null, cq: '', edit: false, q: '' });
-  const PST = { plan: ['', W.N('Запланирован')], work: ['warn', W.N('В работе')], done: ['ok', W.N('Завершён')] };
+  const PST = { plan: ['', W.N('Запланирован')], work: ['warn', W.N('В работе')], done: ['ok', W.N('Завершён')], cancel: ['', W.N('Отменён')] };
+  const UNITS = ['кг', 'л', 'шт'];
   const RST = { ok: ['ok', W.N('Хватает')], low: ['warn', W.N('Ниже порога')], short: ['bad', W.N('Не хватает')] };
 
   /* новый выпуск продукции */
@@ -22,7 +23,7 @@
     };
     const first = pid || (prods[0] || {}).id;
     W.modal({
-      size: 'lg', title: t('Новый выпуск продукции'), sub: t('Сырьё спишется по калькуляции, когда выпуск будет завершён'), icon: 'factory',
+      size: 'lg', title: t('Новый выпуск продукции'), sub: t('Сырьё спишется по калькуляции при запуске в работу'), icon: 'factory',
       body: `<div class="form-grid">${W.fs({ name: 'p', label: t('Продукция'), options: prods.map(p => [p.id, p.name, `${t('ост.')} ${W.qty(W.stock('p', p.id))}`]), value: first })}
         ${W.fi({ name: 'qty', label: t('Количество, шт'), value: 100, type: 'number', attrs: 'min="1" step="1"', req: true })}
         ${W.fta({ name: 'note', label: t('Комментарий'), cls: 'full', ph: t('Смена, партия, особые условия') })}</div>
@@ -38,22 +39,49 @@
       const d = W.form(m.el);
       if (!(d.qty > 0)) return W.toast(t('Укажите количество'), 'warn');
       const o = W.createProdOrder({ p: d.p, qty: Math.round(d.qty), note: d.note });
-      if (start) W.startProd(o);
+      const r = start ? W.startProd(o) : true;
       W.save(); m.close();
+      if (r !== true) return shortModal(r.short, t('Выпуск №{n} сохранён как запланированный', { n: W.no(o.no) }));
       W.toast(t('Выпуск №{n}: {s}', { n: W.no(o.no), s: start ? t('в работе') : t('запланирован') }));
     }
   };
+  // сырья не хватает для запуска: что докупить, и сразу оформить приход
+  const shortModal = (short, sub) => W.modal({ size: 'sm', title: t('Не хватает сырья'), sub, icon: 'alert', iconCls: 'bad',
+    body: short.map(x => `<div class="list-row"><div class="lr-main"><b>${esc(x.m.name)}</b><span>${t('Нужно {a}, на складе {b}', { a: `${W.qty(x.need)} ${t(x.m.unit)}`, b: `${W.qty(x.have)} ${t(x.m.unit)}` })}</span></div></div>`).join(''),
+    foot: `<button class="btn" data-m="close">${t('Закрыть')}</button>${W.can('income') ? `<button class="btn primary" data-m="buy">${I('box')}${t('Оформить приход')}</button>` : ''}`,
+    actions: { buy: (b, m) => { m.close(); W.purchaseForm && W.purchaseForm(short.map(x => ({ m: x.m.id, qty: Math.ceil(x.need - x.have) }))); } } });
+  const start = (o) => {
+    const r = W.startProd(o);
+    if (r !== true) return shortModal(r.short, t('Выпуск №{n} нельзя запустить', { n: W.no(o.no) }));
+    W.save(); W.toast(t('Выпуск №{n} запущен, сырьё списано', { n: W.no(o.no) }));
+  };
+  // завершение: вводится, сколько штук получилось на самом деле
   const finish = (o) => {
-    const r = W.finishProd(o);
-    if (r !== true) {
-      W.modal({ size: 'sm', title: t('Не хватает сырья'), sub: t('Выпуск №{n} нельзя завершить', { n: W.no(o.no) }), icon: 'alert', iconCls: 'bad',
-        body: r.short.map(x => `<div class="list-row"><div class="lr-main"><b>${esc(x.m.name)}</b><span>${t('Нужно {a}, на складе {b}', { a: `${W.qty(x.need)} ${t(x.m.unit)}`, b: `${W.qty(x.have)} ${t(x.m.unit)}` })}</span></div></div>`).join(''),
-        foot: `<button class="btn" data-m="close">${t('Закрыть')}</button>${W.can('income') ? `<button class="btn primary" data-m="buy">${I('box')}${t('Оформить приход')}</button>` : ''}`,
-        actions: { buy: (b, m) => { m.close(); W.purchaseForm && W.purchaseForm(r.short.map(x => ({ m: x.m.id, qty: Math.ceil(x.need - x.have) }))); } } });
-      return;
-    }
-    W.save();
-    W.toast(t('Выпуск №{n} завершён: +{q} шт на склад производства', { n: W.no(o.no), q: W.qty(o.qty) }));
+    const p = W.product(o.p) || {};
+    const lossLine = fact => {
+      const loss = o.qty - fact;
+      return loss > 0 ? t('Потери: {n} шт', { n: W.qty(loss) }) : loss < 0 ? t('Сверх заказа: {n} шт', { n: W.qty(-loss) }) : t('Без потерь');
+    };
+    W.modal({ size: 'sm', title: t('Завершить выпуск №{n}', { n: W.no(o.no) }), sub: esc(p.name), icon: 'checkCircle', iconCls: 'ok',
+      body: `<div class="list-row" style="padding-top:0"><div class="lr-main"><span>${t('По заказу')}</span></div><b>${W.qty(o.qty)} ${t('шт')}</b></div>
+        ${W.fi({ name: 'fact', label: t('Выпущено фактически, шт'), value: o.qty, type: 'number', attrs: 'min="0" step="1"', req: true, hint: `<span class="loss">${lossLine(o.qty)}</span>` })}
+        <p class="muted mt-12" style="font-size:13px">${t('Сырьё уже списано по калькуляции при запуске. Продукция придёт на склад.')}</p>`,
+      foot: `<button class="btn" data-m="close">${t('Отмена')}</button><button class="btn ok" data-m="ok">${I('check')}${t('Завершить')}</button>`,
+      actions: {
+        input: (el, m) => { if (el.name === 'fact') m.el.querySelector('.loss').textContent = lossLine(Math.round(W.parseNum(el.value))); },
+        ok: (b, m) => {
+          const raw = m.el.querySelector('[name=fact]').value.trim(), fact = Math.round(W.parseNum(raw));
+          if (raw === '' || fact < 0) return W.toast(t('Укажите количество'), 'warn');
+          W.finishProd(o, fact); W.save(); m.close();
+          W.toast(t('Выпуск №{n} завершён: +{q} шт на склад', { n: W.no(o.no), q: W.qty(fact) }));
+        },
+      } });
+  };
+  const cancel = async (o) => {
+    const ok = await W.confirm({ title: t('Отменить выпуск №{n}?', { n: W.no(o.no) }), ok: t('Отменить выпуск'),
+      text: o.status === 'work' ? t('Сырьё, списанное при запуске, вернётся на остатки. Если часть сырья уже испорчена, спишите её как брак.') : t('Выпуск ещё не запущен, сырьё не списывалось.') });
+    if (!ok) return;
+    W.cancelProd(o); W.save(); W.toast(t('Выпуск №{n} отменён', { n: W.no(o.no) }));
   };
 
   /* ---------- вкладка «Производство» ---------- */
@@ -74,7 +102,7 @@
         ${W.kpi({ label: t('Всего документов'), value: O.length + Pu.length, icon: 'file', foot: t('выпуск {a} · приход {b}', { a: O.length, b: Pu.length }) })}
         ${W.kpi({ label: t('В работе'), value: O.filter(o => o.status === 'work').length, icon: 'factory', c: 'c-warn', foot: t('запланировано: {n}', { n: O.filter(o => o.status === 'plan').length }) })}
         ${W.kpi({ label: t('Завершено за месяц'), value: doneM.length, icon: 'checkCircle', c: 'c-ok', foot: t('документов выпуска') })}
-        ${W.kpi({ label: t('Выпуск за месяц'), value: W.fmtNum(W.sum(doneM, o => o.qty)), small: t('шт'), icon: 'layers', c: 'c-vio', foot: lastOut ? t('последний: {d} · {n}', { d: W.fmtDate(lastOut.doneAt || lastOut.at), n: esc((W.product(lastOut.p) || {}).name) }) : '—' })}
+        ${W.kpi({ label: t('Выпуск за месяц'), value: W.fmtNum(W.sum(doneM, W.prodOut)), small: t('шт'), icon: 'layers', c: 'c-vio', foot: lastOut ? t('последний: {d} · {n}', { d: W.fmtDate(lastOut.doneAt || lastOut.at), n: esc((W.product(lastOut.p) || {}).name) }) : '—' })}
         ${W.kpi({ label: t('Оприходовано на сумму'), value: W.moneyKpi(W.sum(Pu, p => p.total)), icon: 'box', foot: t('сырьё и тара за всё время') })}
         ${W.kpi({ label: t('Приход за текущий месяц'), value: W.moneyKpi(W.sum(Pu.filter(p => p.at.slice(0, 7) === mon), p => p.total)), icon: 'calendar', c: 'c-ok' })}
         ${W.kpi({ label: t('Всего приходов'), value: Pu.length, icon: 'download', c: 'c-vio' })}
@@ -86,20 +114,60 @@
           { label: t('Документ'), title: true, render: d => `<div class="cell-flex"><div class="kpi-ic ${d.kind === 'out' ? 'c-vio' : 'c-ok'}" style="width:34px;height:34px">${I(d.kind === 'out' ? 'factory' : 'box', 'ic-sm')}</div><div style="min-width:0"><div class="cell-main">${d.kind === 'out' ? t('Выпуск №{n}', { n: W.no(d.o.no) }) : t('Приход №{n}', { n: W.no(d.p.no) })}</div><div class="cell-sub">${W.fmtDT(d.at)}</div></div></div>` },
           { label: t('Статус'), aside: true, render: d => d.kind === 'out' ? W.badge(t(PST[d.o.status][1]), PST[d.o.status][0]) : W.badge(t('Оприходован'), 'ok') },
           { label: t('Наименование'), render: d => d.kind === 'out' ? esc((W.product(d.o.p) || {}).name) : `${esc((W.supplier(d.p.sup) || {}).name)}<div class="cell-sub">${d.p.items.map(i => esc((W.material(i.m) || {}).name)).slice(0, 3).join(', ')}${d.p.items.length > 3 ? '…' : ''}</div>` },
-          { label: t('Количество'), r: true, render: d => d.kind === 'out' ? `${W.qty(d.o.qty)} ${t('шт')}` : t('{n} поз.', { n: d.p.items.length }) },
-          { label: t('Сумма'), r: true, render: d => `<span class="money">${W.money(d.kind === 'out' ? (d.o.cost || W.unitCost(d.o.p) * d.o.qty) : d.p.total)}</span>` },
-          { label: '', cls: 'w-act', render: d => d.kind === 'out' && canE && d.o.status !== 'done' ? `<div class="act">${d.o.status === 'plan' ? `<button data-a="start" data-id="${d.o.id}" title="${t('Запустить')}">${I('play')}</button>` : ''}<button class="go" data-a="finish" data-id="${d.o.id}" title="${t('Завершить выпуск')}">${I('check')}</button></div>` : '' },
+          { label: t('Количество'), r: true, render: d => d.kind === 'out' ? outQty(d.o) : t('{n} поз.', { n: d.p.items.length }) },
+          { label: t('Сумма'), r: true, render: d => d.kind === 'out' && d.o.status === 'cancel' ? '<span class="muted">—</span>' : `<span class="money">${W.money(d.kind === 'out' ? (d.o.cost || W.unitCost(d.o.p) * d.o.qty) : d.p.total)}</span>` },
+          { label: '', cls: 'w-act', render: d => d.kind === 'out' && canE && (d.o.status === 'plan' || d.o.status === 'work') ? `<div class="act">${d.o.status === 'plan' ? `<button data-a="start" data-id="${d.o.id}" title="${t('Запустить')}">${I('play')}</button>` : `<button class="go" data-a="finish" data-id="${d.o.id}" title="${t('Завершить выпуск')}">${I('check')}</button>`}<button data-a="cancel" data-id="${d.o.id}" title="${t('Отменить выпуск')}">${I('x')}</button></div>` : '' },
         ], rows, empty: W.empty(t('Документов нет'), '', 'file'),
       })}</div>`;
+  };
+
+  // количество в документе выпуска: по факту, если он отличается от заказа — с потерями
+  const outQty = o => {
+    if (o.status !== 'done' || W.prodOut(o) === o.qty) return `<span class="${o.status === 'cancel' ? 'muted' : ''}">${W.qty(o.qty)} ${t('шт')}</span>`;
+    const loss = W.prodLoss(o);
+    return `${W.qty(W.prodOut(o))} ${t('шт')}<div class="cell-sub">${loss ? t('из {a}, потери {b}', { a: W.qty(o.qty), b: W.qty(loss) }) : t('из {a}', { a: W.qty(o.qty) })}</div>`;
+  };
+
+  /* ---------- справочник сырья ---------- */
+  const matUsed = id => Object.values(W.db.recipes).some(rec => rec.some(r => r.m === id)) || W.db.moves.some(m => m.t === 'm' && m.item === id);
+  W.materialForm = (id) => {
+    const x = id ? W.material(id) : null;
+    const units = [...new Set([...UNITS, ...W.db.materials.map(m => m.unit)])].map(u => [u, t(u)]);
+    const canDel = x && !matUsed(x.id);
+    W.modal({ title: x ? esc(x.name) : t('Новое сырьё'), sub: x ? t('Цена считается сама: средняя по остатку после каждого прихода') : t('Позиция появится в приходе, калькуляции и остатках'), icon: 'flask',
+      body: `<div class="form-grid">
+        ${W.fi({ name: 'name', label: t('Наименование'), value: x ? x.name : '', cls: 'full', req: true, ph: t('Например, Диоксид титана') })}
+        ${W.fs({ name: 'unit', label: t('Единица'), options: units, value: x ? x.unit : 'кг' })}
+        ${W.fi({ name: 'safety', label: t('Страховой порог'), value: x ? (x.safety || 0) : 0, type: 'number', attrs: 'min="0" step="any"', hint: t('Ниже этого остатка сырьё попадает в потребность') })}
+        ${W.fs({ name: 'sup', label: t('Основной поставщик'), options: [['', t('Не указан')], ...W.db.suppliers.map(s => [s.id, s.name])], value: x ? (x.sup || '') : '', cls: 'full' })}
+        ${x ? `<div class="field full"><label>${t('Цена')}</label><div class="t2">${t('Средняя: {a} · последний приход: {b}', { a: W.money(x.price || 0), b: W.money(x.lastPrice || x.price || 0) })}</div></div>`
+          : W.fi({ name: 'price', label: t('Цена закупки за единицу'), money: true, cls: 'full', hint: t('Нужна для себестоимости, пока не было прихода') })}</div>`,
+      foot: `${canDel ? `<button class="btn danger" data-m="del">${I('trash')}${t('Удалить')}</button><span class="spacer"></span>` : ''}<button class="btn" data-m="close">${t('Отмена')}</button><button class="btn primary" data-m="save">${I('check')}${t('Сохранить')}</button>`,
+      actions: {
+        save: (b, m) => {
+          if (!W.validate(m.el)) return;
+          const d = W.form(m.el), name = d.name.replace(/\s+/g, ' ');
+          if (W.db.materials.some(mm => mm !== x && mm.name.toLowerCase() === name.toLowerCase())) return W.toast(t('Такое сырьё уже есть в справочнике'), 'warn');
+          const ch = { name, unit: d.unit, safety: Math.max(0, d.safety || 0), sup: d.sup || null };
+          if (x) Object.assign(x, ch);
+          else W.db.materials.push(Object.assign({ id: W.uid('m'), price: d.price || 0 }, ch));
+          W.save(); m.close(); W.toast(x ? t('Сырьё сохранено') : t('Сырьё добавлено: {n}', { n: name }));
+        },
+        del: async (b, m) => {
+          if (!await W.confirm({ title: t('Удалить «{n}»?', { n: esc(x.name) }), text: t('Позиция не используется ни в калькуляции, ни в движениях.') })) return;
+          W.db.materials = W.db.materials.filter(mm => mm !== x); W.save(); m.close(); W.toast(t('Сырьё удалено'));
+        },
+      } });
   };
 
   /* ---------- вкладка «Остатки» ---------- */
   const tabStock = () => {
     const S = st();
     let body = '';
+    const canM = W.allow('prod.edit') || W.allow('recipe.edit');
     if (S.part === 'raw') {
       const rows = W.rawNeeds();
-      body = `<div class="card card-pad mb-16" style="box-shadow:none;background:var(--info-bg);border-color:transparent;display:flex;gap:12px;align-items:center">${I('flask')}<div style="font-size:13.5px"><b>${t('Потребность = под заказы + страховой порог − остаток')}</b><div class="t2">${t('Под заказы считается сырьё для незавершённых выпусков и для заказов клиентов, которые не покрыты остатком готовой продукции.')}</div></div></div>
+      body = `<div class="card card-pad mb-16" style="box-shadow:none;background:var(--info-bg);border-color:transparent;display:flex;gap:12px;align-items:center">${I('flask')}<div style="font-size:13.5px"><b>${t('Потребность = под заказы + страховой порог − остаток')}</b><div class="t2">${t('Под заказы считается сырьё для запланированных выпусков и для заказов клиентов, которые не покрыты остатком готовой продукции. У запущенных выпусков сырьё уже списано.')}</div></div></div>
       <div class="card">${W.table({ cols: [
         { label: t('Сырьё'), title: true, render: r => `<div class="cell-main">${esc(r.m.name)}</div><div class="cell-sub">${esc((W.supplier(r.m.sup) || {}).name || '')}</div>` },
         { label: t('Статус'), aside: true, render: r => W.badge(t(RST[r.status][1]), RST[r.status][0]) },
@@ -107,6 +175,7 @@
         { label: t('Страховой порог'), r: true, render: r => `${W.qty(r.safety)} ${t(r.m.unit)}` },
         { label: t('Остаток'), r: true, render: r => `<b>${W.qty(r.stock)}</b> ${t(r.m.unit)}` },
         { label: t('Потребность'), r: true, render: r => r.toBuy > 0 ? `<b style="color:var(--bad)">${W.qty(r.toBuy)} ${t(r.m.unit)}</b>` : `<span class="muted">0</span>` },
+        ...(canM ? [{ label: '', cls: 'w-act', render: r => `<div class="act"><button data-a="mat" data-id="${r.m.id}" title="${t('Изменить')}">${I('edit')}</button></div>` }] : []),
       ], rows: rows.sort((a, b) => ({ short: 0, low: 1, ok: 2 }[a.status] - { short: 0, low: 1, ok: 2 }[b.status])), rowAttr: r => r.status === 'short' ? 'class="row-bad"' : r.status === 'low' ? 'class="row-warn"' : '' })}</div>
       ${W.can('income') && rows.some(r => r.toBuy > 0) ? `<div class="row mt-16" style="justify-content:flex-end"><button class="btn primary" data-a="buyNeed">${I('box')}${t('Оформить приход по потребности')}</button></div>` : ''}`;
     } else if (S.part === 'fg') {
@@ -130,7 +199,7 @@
           ${items.sort((a, b) => b.q * (b.x.price || 0) - a.q * (a.x.price || 0)).slice(0, 8).map(r => `<div class="list-row" style="padding:7px 0"><div class="lr-main"><b style="font-size:13px;font-weight:500">${esc(r.x.name)}</b></div><span class="nowrap" style="font-size:13px;font-weight:600">${W.qty(r.q)} ${isRaw ? t(r.x.unit) : t('шт')}</span></div>`).join('')}</div>`;
       }).join('')}</div>`;
     }
-    return `<div class="toolbar">${W.seg([{ id: 'raw', label: t('Сырьё') }, { id: 'fg', label: t('Готовая продукция') }, { id: 'wh', label: t('Места хранения') }], S.part, 'part')}</div>${body}`;
+    return `<div class="toolbar">${W.seg([{ id: 'raw', label: t('Сырьё') }, { id: 'fg', label: t('Готовая продукция') }, { id: 'wh', label: t('Места хранения') }], S.part, 'part')}${S.part === 'raw' && canM ? `<span class="spacer"></span><button class="btn" data-a="mat">${I('plus')}${t('Новое сырьё')}</button>` : ''}</div>${body}`;
   };
 
   /* ---------- вкладка «Калькуляция» ---------- */
@@ -202,8 +271,10 @@
       docs: el => { st().docs = el.dataset.v; W.swap(); },
       q: el => { st().q = el.value; W.region('tab', tabProd()); },
       part: el => { st().part = el.dataset.v; W.swap(); },
-      start: el => { const o = W.db.prodOrders.find(x => x.id === el.dataset.id); W.startProd(o); W.save(); W.toast(t('Выпуск №{n} запущен', { n: W.no(o.no) })); },
+      start: el => start(W.db.prodOrders.find(x => x.id === el.dataset.id)),
       finish: el => finish(W.db.prodOrders.find(x => x.id === el.dataset.id)),
+      cancel: el => cancel(W.db.prodOrders.find(x => x.id === el.dataset.id)),
+      mat: el => W.materialForm(el.dataset.id),
       buyNeed: () => W.purchaseForm && W.purchaseForm(W.rawNeeds().filter(r => r.toBuy > 0).map(r => ({ m: r.m.id, qty: Math.ceil(r.toBuy) }))),
       cq: el => { st().cq = el.value; const q = el.value.trim().toLowerCase(); W.region('picks', picks(W.db.products.filter(p => !q || p.name.toLowerCase().includes(q)))); },
       pick: el => { st().calc = el.dataset.id; st().edit = false; W.swap(); },
