@@ -1,6 +1,7 @@
 /* =========================================================================
    Спокойный вид («calm») — основной вид программы.
    Включён классом html.ui-calm; прежний вид — ссылкой ?ui=classic (обратно — ?ui=calm).
+   Страница входа (index.html) этот файл не подключает: там прежний вид с живым фоном.
    Логику не трогает: только цвет, шрифт, отступы, бейджи, графики, радиусы и тени.
    Правила вида:
    - фон нейтральный, карточки на тон светлее, граница 1px, теней нет;
@@ -408,41 +409,4 @@ html.ui-calm .doc .parties b { text-transform: none; letter-spacing: 0; font-siz
   html.ui-calm .tbl.stack td.w-act { border-top-style: solid; }
   html.ui-calm .tbl.stack td.w-act .act button { border-radius: 8px; }
   html.ui-calm .crumbs b { font-weight: 600; }
-}
-
-/* =========================================================================
-   Страница входа
-   ========================================================================= */
-html.ui-calm .art, html.ui-calm .art.no-gl { background: var(--surface); color: var(--text); border-right: 1px solid var(--line); }
-html.ui-calm .art canvas, html.ui-calm .art::after { display: none; }
-html.ui-calm .art-brand b { font-weight: 700; letter-spacing: .04em; color: var(--text); }
-html.ui-calm .art-brand span { opacity: 1; color: var(--muted); letter-spacing: 0; }
-html.ui-calm .art-copy .kicker { padding: 0; background: none; border: 0; border-radius: 0; color: var(--muted); font-weight: 400; letter-spacing: 0; font-size: 13px; }
-html.ui-calm .art-copy .kicker i { background: var(--ok-dot); box-shadow: none; width: 6px; height: 6px; }
-html.ui-calm .art-copy h1 { font-weight: 600; letter-spacing: -.02em; line-height: 1.1; text-shadow: none; }
-html.ui-calm .art-copy h1 em { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--muted); }
-html.ui-calm .art-copy p { opacity: 1; color: var(--text-2); }
-html.ui-calm .art-feats { gap: 16px; margin-top: 32px; }
-html.ui-calm .art-feat { padding: 16px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
-html.ui-calm .art-feat .ic { color: var(--muted); width: 20px; height: 20px; }
-html.ui-calm .art-feat b { font-weight: 500; margin-top: 8px; }
-html.ui-calm .art-feat span { opacity: 1; color: var(--muted); }
-html.ui-calm .art-foot { opacity: 1; color: var(--muted); margin-top: 24px; }
-html.ui-calm .art-tools .lang-switch { background: var(--surface); border-color: var(--line); }
-html.ui-calm .art-tools .lang-switch button { color: var(--muted); }
-html.ui-calm .art-tools .lang-switch button.on { color: var(--text); }
-html.ui-calm .art-tools .icon-btn { background: var(--surface); border-color: var(--line); color: var(--text-2); }
-html.ui-calm .auth-box h2 { font-weight: 600; letter-spacing: -.02em; }
-html.ui-calm .auth-box .lead { margin: 8px 0 24px; }
-html.ui-calm .auth-box .field + .field { margin-top: 16px; }
-html.ui-calm .auth-box .inp { height: 48px; border-radius: 10px; }
-html.ui-calm .auth-box .btn.lg { height: 48px; margin-top: 24px; border-radius: 10px; }
-html.ui-calm .eye { border-radius: 8px; }
-html.ui-calm .auth-err { border-radius: 10px; }
-html.ui-calm .auth-help { border-radius: 10px; border-style: solid; }
-html.ui-calm .auth-ok .ring { width: 64px; height: 64px; border-radius: 10px; background: var(--surface-3); color: var(--ok); }
-@media (max-width: 960px) {
-  html.ui-calm .art { min-height: 0; border-radius: 0; border-right: 0; border-bottom: 1px solid var(--line); }
-  html.ui-calm .art-copy { margin-top: 24px; }
-  html.ui-calm .art-copy h1 { font-size: 28px; }
 }

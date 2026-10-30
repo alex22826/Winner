@@ -203,7 +203,7 @@ W.DICT = {
 "Добавить расход": "Xarajat qo'shish",
 "Добавить сотрудника": "Xodim qo'shish",
 "Добавьте хотя бы один товар": "Kamida bitta mahsulot qo'shing",
-"Добро пожаловать": "Xush kelibsiz",
+"Добро пожаловать!": "Xush kelibsiz!",
 "Доброе утро": "Xayrli tong",
 "Доброй ночи": "Xayrli tun",
 "Добрый вечер": "Xayrli kech",
